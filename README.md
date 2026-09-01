@@ -54,7 +54,6 @@ graph TD
 
     linkStyle default stroke:#4A5568,stroke-width:2px;
 
-### Nivel 1: Diagrama de Contenedores
 ---
 config:
   theme: default
@@ -93,27 +92,27 @@ graph TB
     class GSheets db;
     class WA ext;
 
-⚡ Instalación y Configuración Local
+##⚡ Instalación y Configuración Local
 
-1. Clonar el repositorio:
+1. **Clonar el repositorio:**
    ```bash
    git clone [https://github.com/TU-USUARIO/app-cobros.git](https://github.com/TU-USUARIO/app-cobros.git)
 cd app-cobros
    ```
-2. Instalar dependencias de Node.js:
+2. **Instalar dependencias:**
    ```bash
 npm install
    ```
-3. Variables de entorno:
+3. **Variables de entorno:**
 Crea un archivo .env en la raíz del proyecto y añade la URL de tu API de Apps Script:
    ```bash
    VITE_API_URL=[https://script.google.com/macros/s/TU_SCRIPT_ID/exec](https://script.google.com/macros/s/TU_SCRIPT_ID/exec)
    ```
-4. Iniciar el entorno de desarrollo local:
+4. **Iniciar el entorno de desarrollo local:**
    ```bash
 npm run dev
    ```
-5. Abrir la aplicación en tu navegador:
+5. **Abrir la interfaz de React en tu navegador:**
    ```bash
 open http://localhost:3000
    ```
