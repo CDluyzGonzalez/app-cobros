@@ -2,12 +2,19 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 antialiased font-sans select-none min-h-screen;
+    /* usamos min-h-dvh para que se ajuste a los diferentes tamaños de pantalla */
+    @apply bg-slate-950 text-slate-100 antialiased font-sans select-none min-h-dvh;
     -webkit-tap-highlight-color: transparent;
+
+    /* evitar el "rebote" de scroll en iOS */
+    overscroll-behavior-y: none;
+
+    /* Respetar la zona segura inferior en iOS */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* Custom scrollbars & utilities */
+/* Barras de desplazamiento personalizadas y utilidades */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
