@@ -27,13 +27,8 @@ Un sistema web centralizado diseñado para gestionar suscripciones, automatizar 
 ## 📐 Arquitectura del Sistema (Modelo C4)
 
 ### Nivel 1: Diagrama de Contexto
+
 ```mermaid
----
-config:
-  theme: default
-  themeVariables:
-    fontFamily: "sans-serif"
----
 graph TD
     classDef user fill:#2B6CB0,stroke:#2C5282,color:#FFFFFF,stroke-width:2px;
     classDef system fill:#0D9488,stroke:#0F766E,color:#FFFFFF,stroke-width:2px;
@@ -54,12 +49,6 @@ graph TD
 
     linkStyle default stroke:#4A5568,stroke-width:2px;
 
----
-config:
-  theme: default
-  themeVariables:
-    fontFamily: "sans-serif"
----
 graph TB
     subgraph ClientSide["💻 Cliente (Frontend / Navegador)"]
         SPA["<b>Single Page Application</b><br><i>React 18, TypeScript, Vite, Tailwind CSS</i><br><br>Interfaz gráfica responsiva para administrar clientes, servicios, cobros e historial."]
@@ -92,34 +81,32 @@ graph TB
     class GSheets db;
     class WA ext;
 
-##⚡ Instalación y Configuración Local
+⚡ Instalación y Configuración Local
 
-1. **Clonar el repositorio:**
+1. Clonar el repositorio:
    ```bash
-   git clone [https://github.com/TU-USUARIO/app-cobros.git](https://github.com/TU-USUARIO/app-cobros.git)
+   git clone [https://github.com/CDluyzGonzalez/app-cobros.git](https://github.com/CDluyzGonzalez/app-cobros.git)
 cd app-cobros
    ```
-2. **Instalar dependencias:**
+2. Instalar dependencias de Node.js:
    ```bash
 npm install
    ```
-3. **Variables de entorno:**
-Crea un archivo .env en la raíz del proyecto y añade la URL de tu API de Apps Script:
+3. Variables de entorno:
+   - Crear un archivo `.env` basado en `.env.example` con las credenciales de Google y configuraciones necesarias.
+   - Asegúrate de no subir tu archivo `.env` al repositorio.
    ```bash
    VITE_API_URL=[https://script.google.com/macros/s/TU_SCRIPT_ID/exec](https://script.google.com/macros/s/TU_SCRIPT_ID/exec)
    ```
-4. **Iniciar el entorno de desarrollo local:**
+4. Iniciar el entorno de desarrollo local:
    ```bash
 npm run dev
    ```
-5. **Abrir la interfaz de React en tu navegador:**
-   ```bash
-open http://localhost:3000
-   ```
+5. Abrir la aplicación en [http://localhost:3000](http://localhost:3000).
 
 👤 Autor
 Carlos D´ Luyz
 
 Ingeniero de Sistemas en formación · Desarrollador Web
 
-🔗 LinkedIn: [Carlos D´ Luyz](https://www.linkedin.com/in/carlosdluyz/)
+🔗 LinkedIn
