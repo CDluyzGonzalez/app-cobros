@@ -368,12 +368,22 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
                 <label className="block text-xs text-slate-300 mb-1">Correo de la cuenta de plataforma</label>
                 <input
                   type="email"
+                  list="accounts-list-options"
                   placeholder="cuenta@correo.com"
                   value={serviceForm.correo_cuenta}
                   onChange={(e) => setServiceForm({ ...serviceForm, correo_cuenta: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
                 />
-                <p className="mt-1 text-[10px] text-slate-500">Si no existe, se crea como cuenta en revisión. Cuentas detectadas: {accounts.length}.</p>
+                <datalist id="accounts-list-options">
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.correo_cuenta}>
+                      {acc.plataforma} ({acc.cupos_ocupados}/{acc.perfiles_totales} cupos)
+                    </option>
+                  ))}
+                </datalist>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Se vinculará o creará la cuenta de {serviceForm.plataforma} con este correo. Cuentas detectadas: {accounts.length}.
+                </p>
               </div>
 
               <div className="flex gap-2 pt-2">

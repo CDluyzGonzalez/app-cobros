@@ -90,6 +90,7 @@ function saveService(service, user) {
   if (service.id) {
     for (var i = 1; i < rows.length; i++) {
       if (rows[i][0] === service.id) {
+        var oldAccountId = rows[i][2]; // ID de la cuenta anterior
         var newVersion = (Number(rows[i][14]) || 1) + 1;
         sheet.getRange(i + 1, 2, 1, 14).setValues([[
           service.cliente_id,
@@ -109,6 +110,9 @@ function saveService(service, user) {
         ]]);
 
         logHistory('SERVICIOS', service.id, 'ACTUALIZAR', 'Servicio ' + service.id + ' actualizado', userName);
+        if (oldAccountId && oldAccountId !== resolvedAccountId) {
+          refreshAccountCapacity(oldAccountId);
+        }
         refreshAccountCapacity(resolvedAccountId);
         refreshClientStatus(service.cliente_id);
         return { id: service.id, success: true, message: 'Servicio actualizado con éxito.' };
@@ -275,21 +279,94 @@ function saveAccount(acc, user) {
   return { success: true, id: nextId, message: 'Cuenta creada con éxito.' };
 }
 
+function normalizePlatformName(p) {
+  if (!p) return '';
+  return p.toString().toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+}
+
 function resolveAccountForService(service, userName) {
   var email = (service.correo_cuenta || '').toString().trim().toLowerCase();
-  if (!email) return service.cuenta_id || '';
-  var sheet = getSpreadsheet().getSheetByName(CONFIG.ACCOUNTS_SHEET);
+  var platform = (service.plataforma || '').toString().trim();
+  if (!platform || platform === 'N/A') platform = 'General';
+  var normTargetPlatform = normalizePlatformName(platform);
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.ACCOUNTS_SHEET);
+  if (!sheet) return service.cuenta_id || '';
   var rows = sheet.getDataRange().getValues();
-  for (var i = 1; i < rows.length; i++) {
-    if ((rows[i][2] || '').toString().trim().toLowerCase() === email) {
-      return rows[i][0];
+
+  // 1. Si el usuario ingresó un correo:
+  if (email) {
+    // Buscar cuenta que coincida tanto en CORREO como en PLATAFORMA
+    for (var i = 1; i < rows.length; i++) {
+      var rowPlatform = normalizePlatformName(rows[i][1]);
+      var rowEmail = (rows[i][2] || '').toString().trim().toLowerCase();
+      if (rowEmail === email && rowPlatform === normTargetPlatform) {
+        return rows[i][0];
+      }
+    }
+
+    // Si no existe cuenta de esa plataforma para ese correo, crear una nueva cuenta en _APP_CUENTAS
+    var accountId = 'ACC-' + padZero(rows.length, 5);
+    var now = new Date().toISOString();
+    sheet.appendRow([
+      accountId,
+      platform,
+      email,
+      '',
+      1,
+      0,
+      0,
+      '',
+      'ACTIVA',
+      'Creada al asignar servicio ' + platform,
+      now,
+      now
+    ]);
+    logHistory('CUENTAS', accountId, 'CREAR', 'Cuenta creada para ' + platform + ' (' + email + ')', userName);
+    return accountId;
+  }
+
+  // 2. Si no hay correo, pero el servicio ya tenía cuenta_id, verificar si coincide en plataforma
+  if (service.cuenta_id) {
+    for (var j = 1; j < rows.length; j++) {
+      if (rows[j][0] === service.cuenta_id) {
+        var existingPlatform = normalizePlatformName(rows[j][1]);
+        if (existingPlatform === normTargetPlatform) {
+          return service.cuenta_id;
+        }
+      }
     }
   }
-  var accountId = 'ACC-' + Utilities.getUuid().substring(0, 8);
-  var now = new Date().toISOString();
-  sheet.appendRow([accountId, service.plataforma || 'GENERAL', email, '', 1, 0, 0, '', 'EN_REVISION', 'Creada al asignar servicio', now, now]);
-  logHistory('CUENTAS', accountId, 'CREAR', 'Cuenta creada desde servicio: ' + email, userName);
-  return accountId;
+
+  // 3. Buscar cualquier cuenta activa existente de esa plataforma
+  for (var k = 1; k < rows.length; k++) {
+    var kPlatform = normalizePlatformName(rows[k][1]);
+    if (kPlatform === normTargetPlatform && rows[k][8] !== 'CANCELADA') {
+      return rows[k][0];
+    }
+  }
+
+  // 4. Si no existe ninguna cuenta de esa plataforma, crear cuenta base para ella
+  var fallbackAccId = 'ACC-' + padZero(rows.length, 5);
+  var nowIso = new Date().toISOString();
+  var placeholderEmail = 'cuenta@' + (normTargetPlatform || 'general') + '.com';
+  sheet.appendRow([
+    fallbackAccId,
+    platform,
+    placeholderEmail,
+    '',
+    1,
+    0,
+    0,
+    '',
+    'ACTIVA',
+    'Cuenta inicial para ' + platform,
+    nowIso,
+    nowIso
+  ]);
+  logHistory('CUENTAS', fallbackAccId, 'CREAR', 'Cuenta base creada para ' + platform, userName);
+  return fallbackAccId;
 }
 
 function refreshAccountCapacity(accountId) {
