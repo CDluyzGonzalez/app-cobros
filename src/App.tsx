@@ -34,23 +34,34 @@ function MainApp() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [dash, cls, srvs, accs, plats, hist] = await Promise.all([
-        api.getDashboard(),
-        api.getClients(),
-        api.getServices(),
-        api.getAccounts(),
-        api.getPlatformPayments(),
-        api.getHistory(50),
-      ]);
-
-      setDashboardData(dash);
-      setClients(cls);
-      setServices(srvs);
-      setAccounts(accs);
-      setPlatformPayments(plats);
-      setHistory(hist);
+      // 1 sola petición HTTP optimizada
+      const data = await api.getAppData();
+      setDashboardData(data.dashboard);
+      setClients(data.clients);
+      setServices(data.services);
+      setAccounts(data.accounts);
+      setPlatformPayments(data.platformPayments);
+      setHistory(data.history);
     } catch (err: any) {
-      console.error('Error cargando datos:', err);
+      // Fallback de retrocompatibilidad por si el script aún no fue actualizado
+      try {
+        const [dash, cls, srvs, accs, plats, hist] = await Promise.all([
+          api.getDashboard(),
+          api.getClients(),
+          api.getServices(),
+          api.getAccounts(),
+          api.getPlatformPayments(),
+          api.getHistory(50),
+        ]);
+        setDashboardData(dash);
+        setClients(cls);
+        setServices(srvs);
+        setAccounts(accs);
+        setPlatformPayments(plats);
+        setHistory(hist);
+      } catch (fallbackErr: any) {
+        console.error('Error cargando datos:', fallbackErr);
+      }
     } finally {
       setLoading(false);
     }

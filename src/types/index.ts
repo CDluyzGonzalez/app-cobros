@@ -139,3 +139,12 @@ export interface HistoryItem {
   usuario: string;
   created_at: string;
 }
+
+export interface AppData {
+  dashboard: DashboardData;
+  clients: Client[];
+  services: Service[];
+  accounts: Account[];
+  platformPayments: PlatformPayment[];
+  history: HistoryItem[];
+}

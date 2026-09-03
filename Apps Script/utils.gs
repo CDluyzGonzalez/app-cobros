@@ -171,6 +171,60 @@ function getDashboardData() {
     totalCosts += uniqueCostsMap[k];
   }
 
+  return calculateDashboardMetrics(services, platformPayments);
+}
+
+/**
+ * Calcula las métricas del dashboard en memoria a partir de los arrays de servicios y pagos.
+ * Evita releer el Spreadsheet innecesariamente.
+ */
+function calculateDashboardMetrics(services, platformPayments) {
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  var overdue = [], dueToday = [], upcoming = [], pendingPayment = [], pendingCancel = [];
+  var totalIncome = 0;
+
+  for (var i = 0; i < services.length; i++) {
+    var s = services[i];
+    if (s.estado === CONFIG.STATUS.CANCELADO) continue;
+    totalIncome += Number(s.valor) || 0;
+
+    var nextDate = s.fecha_proximo_pago ? new Date(s.fecha_proximo_pago) : null;
+    if (nextDate) {
+      nextDate.setHours(0, 0, 0, 0);
+      var diffDays = Math.round((nextDate - today) / (1000 * 60 * 60 * 24));
+
+      if (s.estado === CONFIG.STATUS.CANCELACION_PENDIENTE) {
+        pendingCancel.push(s);
+      } else if (s.estado === CONFIG.STATUS.PAGO_PENDIENTE || s.estado === CONFIG.STATUS.RECORDATORIO_ENVIADO) {
+        pendingPayment.push(s);
+      } else if (diffDays < 0) {
+        overdue.push(s);
+      } else if (diffDays === 0) {
+        dueToday.push(s);
+      } else if (diffDays <= 7) {
+        upcoming.push(s);
+      }
+    }
+  }
+
+  var uniqueCostsMap = {};
+  for (var j = 0; j < platformPayments.length; j++) {
+    var p = platformPayments[j];
+    var key = (p.cuenta_id || p.concepto || p.plataforma || '').toString().trim().toLowerCase();
+    if (!key) continue;
+
+    if (!uniqueCostsMap[key] || p.estado === 'PENDIENTE') {
+      uniqueCostsMap[key] = Number(p.valor) || 0;
+    }
+  }
+
+  var totalCosts = 0;
+  for (var k in uniqueCostsMap) {
+    totalCosts += uniqueCostsMap[k];
+  }
+
   return {
     metrics: {
       totalServices: services.length,
@@ -192,3 +246,26 @@ function getDashboardData() {
     }
   };
 }
+
+/**
+ * Retorna TODO el estado de la aplicación en 1 sola consulta HTTP unificada.
+ * Reduce drásticamente los tiempos de carga y la cuota de Google Sheets.
+ */
+function getAppData() {
+  var clients = getClientsList();
+  var accounts = getAccountsList();
+  var services = getServicesList();
+  var platformPayments = getPlatformPayments();
+  var history = getHistoryLog(50);
+  var dashboard = calculateDashboardMetrics(services, platformPayments);
+
+  return {
+    dashboard: dashboard,
+    clients: clients,
+    services: services,
+    accounts: accounts,
+    platformPayments: platformPayments,
+    history: history
+  };
+}
+

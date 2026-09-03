@@ -97,6 +97,11 @@ function handleRequest(e, method) {
         output.success = true;
         break;
 
+      case 'get_app_data':
+        output.data = getAppData();
+        output.success = true;
+        break;
+
       case 'get_dashboard':
         output.data = getDashboardData();
         output.success = true;

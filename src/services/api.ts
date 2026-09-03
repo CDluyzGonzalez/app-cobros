@@ -1,4 +1,4 @@
-import { Account, Client, DashboardData, HistoryItem, PlatformPayment, Service, User } from '../types';
+import { Account, AppData, Client, DashboardData, HistoryItem, PlatformPayment, Service, User } from '../types';
 
 const STORAGE_URL_KEY = 'APP_COBROS_GAS_URL';
 const SESSION_TOKEN_KEY = 'APP_COBROS_SESSION_TOKEN';
@@ -33,6 +33,7 @@ async function request<T>(action: string, payload: Record<string, unknown> = {},
 
 export const api = {
   login: (email: string, password: string) => request<User>('login', { email, password }, false),
+  getAppData: () => request<AppData>('get_app_data'),
   getDashboard: () => request<DashboardData>('get_dashboard'),
   getClients: () => request<Client[]>('get_clients'),
   saveClient: (client: Partial<Client>, _user?: User) => request<{ id: string; message: string }>('save_client', { client }),
