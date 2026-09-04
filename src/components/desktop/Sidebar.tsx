@@ -32,13 +32,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard' as NavTab, label: 'Dashboard', icon: Home },
-    { id: 'collections' as NavTab, label: 'Cobros y WhatsApp', icon: DollarSign, badge: badgeCounts.collections },
+    { id: 'collections' as NavTab, label: 'Gestión de Cobros', icon: DollarSign, badge: badgeCounts.collections },
     { id: 'clients' as NavTab, label: 'Clientes y Servicios', icon: Users },
     { id: 'phones' as NavTab, label: 'Cargar Teléfonos WhatsApp', icon: PhoneCall },
     { id: 'accounts' as NavTab, label: 'Cuentas y Perfiles', icon: Layers },
     { id: 'billing' as NavTab, label: 'Facturación / Costos', icon: CreditCard },
     { id: 'history' as NavTab, label: 'Historial de Cambios', icon: History },
-    { id: 'settings' as NavTab, label: 'Conexión Google Sheets', icon: Settings },
+    { id: 'settings' as NavTab, label: 'Configuración del Sistema', icon: Settings },
   ];
 
   return (
@@ -46,12 +46,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Brand header */}
       <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-emerald-950">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Platnex"
+            className="w-9 h-9 rounded-xl object-contain bg-slate-800/80 p-0.5 shadow-md"
+          />
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide">COBROS APP</h1>
-            <p className="text-[10px] text-slate-400 font-mono">Google Sheets DB</p>
+            <h1 className="text-sm font-black text-white tracking-wider">PLATNEX</h1>
+            <p className="text-[10px] text-emerald-400 font-medium">Tu Mundo Digital</p>
           </div>
         </div>
       </div>

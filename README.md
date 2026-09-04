@@ -1,595 +1,274 @@
-# 🚀 App Cobros
+<div align="center">
+  <img src="public/logo.png" alt="Platnex Logo" width="160" style="border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);" />
 
-Sistema web para la gestión de clientes, suscripciones, cobros, pagos y cuentas de plataformas digitales.
+  # PLATNEX — Tu Mundo Digital
+  ### Sistema Inteligente de Gestión de Suscripciones, Cobros Automatizados y Streaming Multiplataforma
 
-La aplicación centraliza la información de los clientes y servicios contratados, utilizando Google Sheets como fuente de datos y Google Apps Script como backend serverless.
+  [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+  [![Vite](https://img.shields.io/badge/Vite-8.2-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+  [![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
+  [![Google Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-API-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white)](https://cloud.google.com/run)
+  [![Cloud Firestore](https://img.shields.io/badge/Cloud_Firestore-3FN-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/docs/firestore)
+  [![Firebase Hosting](https://img.shields.io/badge/Firebase_Hosting-Live-FF8F00?style=for-the-badge&logo=firebase&logoColor=white)](https://app-cobros-v2.web.app)
+  [![Cost](https://img.shields.io/badge/Costo-$0_COP/mes-00C853?style=for-the-badge)](https://cloud.google.com/free)
 
----
+  <p align="center">
+    <strong>Plataforma PWA moderna, reactiva y serverless de nivel empresarial, diseñada para negocios de distribución y administración de cuentas de streaming (Netflix, Disney+, Max, Prime Video, Spotify, YouTube Premium, etc.).</strong>
+  </p>
 
-## 🎯 Objetivo
-
-App Cobros permite administrar desde una sola aplicación:
-
-- 👥 Clientes y suscripciones.
-- 📺 Servicios de plataformas digitales.
-- 💰 Cobros y pagos.
-- 📅 Próximas fechas de renovación.
-- 📩 Recordatorios mediante WhatsApp.
-- 💳 Pagos realizados a las plataformas.
-- 📊 Facturación, ingresos, gastos y ganancias.
-- 🔔 Alertas de vencimientos.
-- ❌ Cancelación automática de servicios no renovados.
-- 👨‍👩‍👧‍👦 Acceso compartido para el administrador y su esposa.
-
-La aplicación está diseñada principalmente para dispositivos móviles, pero también cuenta con una interfaz adaptada para tablets y computadores.
+  [Ver App en Producción](https://app-cobros-v2.web.app) · [Reportar un Error](https://github.com/CDluyzGonzalez/app-cobros/issues) · [Solicitar Funcionalidad](https://github.com/CDluyzGonzalez/app-cobros/issues)
+</div>
 
 ---
 
-## 🛠️ Tecnologías utilizadas
+## 📖 Tabla de Contenidos
 
-| Tecnología | Uso |
-|---|---|
-| **React** | Construcción de la interfaz |
-| **TypeScript** | Tipado y seguridad del código |
-| **Vite** | Herramienta de desarrollo y build |
-| **Tailwind CSS** | Diseño y estilos |
-| **Google Apps Script** | Backend y API |
-| **Google Sheets** | Persistencia de datos |
-| **WhatsApp** | Envío manual de mensajes mediante enlaces |
-| **Git / GitHub** | Control de versiones |
+1. [Visión General](#-visión-general)
+2. [Características Principales](#-características-principales)
+3. [Arquitectura del Sistema](#-arquitectura-del-sistema)
+4. [Modelo de Datos en Firestore (3FN)](#-modelo-de-datos-en-firestore-3fn)
+5. [Notificaciones Push Nativas (VAPID / Apple APNs / Google FCM)](#-notificaciones-push-nativas)
+6. [Flujo de Cobros y Acciones Inteligentes](#-flujo-de-cobros-y-acciones-inteligentes)
+7. [Infraestructura y Costo Cero ($0 COP)](#-infraestructura-y-costo-cero-0-cop)
+8. [Estructura del Repositorio](#-estructura-del-repositorio)
+9. [Instalación y Desarrollo Local](#-instalación-y-desarrollo-local)
+10. [Despliegue a Producción](#-despliegue-a-producción)
+11. [Seguridad y Gestión de Acceso](#-seguridad-y-gestión-de-acceso)
+12. [Autor](#-autor)
+13. [Licencia](#-licencia)
 
 ---
 
-## 🏗️ Arquitectura
+## 🌟 Visión General
 
-La aplicación utiliza una arquitectura desacoplada:
+**Platnex** nació de la necesidad de sustituir hojas de cálculo manuales (Google Sheets) y scripts lentos por una arquitectura de alta disponibilidad, baja latencia y costo operativo cero.
+
+Permite a los administradores y sus equipos operar el negocio desde cualquier celular (iOS / Android) o computador de escritorio con sincronización en tiempo real, alertas con sonido a la pantalla bloqueada, facturación automatizada y auditoría de cada peso cobrado y pagado.
+
+---
+
+## ✨ Características Principales
+
+### 📱 Progressive Web App (PWA) de Alto Rendimiento
+- **Instalable sin tiendas**: Añade la aplicación directamente a la pantalla de inicio en iOS (Safari) o Android (Chrome) como si fuera una app nativa.
+- **Soporte Offline & Pre-cache**: Service Worker optimizado con Workbox para tiempos de carga inferiores a 800 ms.
+- **Diseño Adaptativo Móvil / Desktop**: Barra de navegación móvil inferior ergonómica y barra lateral expandible para pantallas grandes.
+
+### 🔔 Notificaciones Push Remotas (Despiertan el Celular Bloqueado)
+- Implementación de **Web Push RFC 8030 / RFC 8291** con llaves **VAPID**.
+- Entrega directa a los servidores oficiales de **Apple (APNs)** y **Google (FCM)**.
+- **Suenan, vibran y encienden la pantalla** incluso cuando el teléfono lleva horas bloqueado.
+- Resumen matutino automático de cobros del día y cuentas vencidas.
+
+### ⚡ Ciclo de Cobro en 4 Botones Especializados
+Cada tarjeta de cobro en el Dashboard y la pantalla de Cobros cuenta con 4 acciones estratégicas con retroalimentación visual:
+1. **`WhatsApp`** (`#4ec481`): Abre la conversación de WhatsApp con una plantilla prediseñada, personalizada con el nombre del cliente, servicio y monto exacto en pesos colombianos ($ COP).
+2. **`Recordar 24h`** (`#b996d2`): Mueve el servicio a estado `EN_ESPERA` ("⏳ Pago Pendiente"), otorgando un período de gracia configurable de 24 horas sin cancelar el servicio.
+3. **`Registrar Pago`** (`#6bb6e8`): Abre el modal inteligente de confirmación y avanza el ciclo exactamente un mes calendario, preservando el **día ancla original** del cliente.
+4. **`No renueva`** (`#6a0101`): Cancela el servicio, libera el perfil asignado y registra el evento en el historial de auditoría.
+
+### 📊 Dashboard Financiero y Control de Rentabilidad
+- Cálculo en tiempo real de:
+  - **Ingresos del Mes** (Recaudado vs. Esperado).
+  - **Costos de Plataformas** (Compras a proveedores mayoristas).
+  - **Ganancia Neta Real**.
+  - Tasa de efectividad de cobro y servicios activos.
+
+### 👥 Gestión Integral de Clientes, Cuentas y Perfiles
+- Directorio de clientes con autocompletado y carga masiva de números telefónicos de WhatsApp.
+- Inventario de cuentas de streaming con control de perfiles ocupados, PIN de acceso y fechas de corte del proveedor.
+- Módulo de Facturación y Costos para registrar egresos por renovación de membresías mayoristas.
+
+### 👀 Modo Demo Integrado (1 Clic)
+- **Acceso Instantáneo sin Registro ni Clonación**: Puedes probar la aplicación en vivo directamente en [https://app-cobros-v2.web.app](https://app-cobros-v2.web.app).
+- **Botón Directo**: En la pantalla de inicio de sesión, pulsa el botón **«👀 Probar versión Demo (Acceso libre)»**.
+- **Datos Simulados Aislados**: Carga instantáneamente un catálogo completo de clientes, servicios por cobrar, cuentas mayoristas y métricas financieras simuladas sin requerir credenciales ni modificar los datos reales de producción en Firestore.
+
+---
+
+## 🏗️ Arquitectura del Sistema
+
+El sistema utiliza una arquitectura serverless desacoplada alojada 100% en **Google Cloud Platform (GCP)**:
 
 ```text
-┌──────────────────────────────┐
-│        React + TypeScript    │
-│          Frontend            │
-│                              │
-│  Mobile · Tablet · Desktop  │
-└──────────────┬───────────────┘
-               │
-               │ HTTP / JSON
-               ▼
-┌──────────────────────────────┐
-│      Google Apps Script      │
-│           Backend            │
-│                              │
-│  Auth · Clientes · Cobros   │
-│  Servicios · Facturación    │
-│  Recordatorios · Scheduler  │
-└──────────────┬───────────────┘
-               │
-               │ CRUD
-               ▼
-┌──────────────────────────────┐
-│        Google Sheets         │
-│      Fuente de datos         │
-│                              │
-│ Clientes · Servicios        │
-│ Plataformas · Pagos         │
-│ Facturación · Historial     │
-└──────────────────────────────┘
-
-               │
-               ▼
-        ┌─────────────┐
-        │  WhatsApp   │
-        │   wa.me     │
-        └─────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                             DISPOSITIVOS DE USUARIO                              │
+│         iPhone (Safari PWA)  ·  Android (Chrome PWA)  ·  PC / Mac Desktop        │
+└──────────────────────────┬───────────────────────────────┬───────────────────────┘
+                           │                               │
+                HTTP / CDN │ HTTPS                         │ Web Push (APNs / FCM)
+                           ▼                               ▼
+       ┌───────────────────────────────┐       ┌───────────────────────────────┐
+       │       Firebase Hosting        │       │   Apple Push & Google FCM     │
+       │    (React 19 + PWA Assets)    │       │    (Alertas Pantalla Bloq.)   │
+       └──────────────┬────────────────┘       └───────────────▲───────────────┘
+                      │                                        │
+                      │ REST API / JSON                        │ VAPID Push Payload
+                      ▼                                        │
+       ┌───────────────────────────────────────────────────────┴───────────────┐
+       │                     Google Cloud Run (Container)                      │
+       │                 app-cobros-api (Node.js / Express / TS)               │
+       │                                                                       │
+       │  • Auth / JWT / Bcrypt       • Cobros & Ciclos       • Web Push VAPID │
+       │  • Clientes & Servicios      • Facturación & Costos  • Auditoría Log  │
+       └──────────────────────────────┬────────────────────────────────────────┘
+                                      │
+                                      │ Firestore SDK (gRPC)
+                                      ▼
+       ┌───────────────────────────────────────────────────────────────────────┐
+       │                         Cloud Firestore                               │
+       │                Base de Datos NoSQL en 3FN (Always Free)               │
+       │                                                                       │
+       │  [clientes] · [servicios] · [cuentas] · [pagos_plataformas]           │
+       │  [historial_cambios] · [usuarios] · [push_subscriptions]              │
+       └───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📐 Arquitectura del Backend
+## 🗄️ Modelo de Datos en Firestore (3FN)
 
-El backend de Google Apps Script está dividido por responsabilidades para reducir errores, duplicación de código y facilitar el mantenimiento.
+Para garantizar integridad referencial y eliminar duplicidad de datos, la estructura se modeló en Tercera Forma Normal (3FN):
 
-```text
-Apps Script
-│
-├── Code.gs
-├── auth.gs
-├── clients.gs
-├── services.gs
-├── payments.gs
-├── billing.gs
-├── scheduler.gs
-├── reminders.gs
-├── cancellations.gs
-├── sheets.gs
-├── security.gs
-└── utils.gs
-```
-
-### Responsabilidad de cada archivo
-
-| Archivo | Responsabilidad |
-|---|---|
-| `Code.gs` | Entrada de la API y enrutamiento de solicitudes |
-| `auth.gs` | Autenticación y gestión de sesiones |
-| `clients.gs` | Gestión de clientes |
-| `services.gs` | Gestión de servicios y suscripciones |
-| `payments.gs` | Registro y control de pagos |
-| `billing.gs` | Facturación y pagos de plataformas |
-| `scheduler.gs` | Procesos automáticos programados |
-| `reminders.gs` | Generación de recordatorios |
-| `cancellations.gs` | Gestión de servicios pendientes de cancelación |
-| `sheets.gs` | Lectura y escritura en Google Sheets |
-| `security.gs` | Hashing, validaciones y medidas de seguridad |
-| `utils.gs` | Funciones auxiliares reutilizables |
-
-La lógica de negocio se mantiene separada del acceso a Google Sheets.
+| Colección | Descripción | Campos Clave |
+|---|---|---|
+| `clientes` | Información base del comprador | `id`, `nombre`, `telefono`, `estado`, `created_at` |
+| `servicios` | Suscripciones activas vendidas | `id`, `cliente_id`, `plataforma`, `perfil`, `pin`, `valor`, `dia_ancla`, `fecha_proximo_pago`, `estado` |
+| `cuentas` | Cuentas madre compradas a mayoristas | `id`, `plataforma`, `correo`, `password`, `perfiles_totales`, `fecha_corte`, `costo_mensual` |
+| `pagos_plataformas` | Registro de costos y egresos pagados | `id`, `cuenta_id`, `plataforma`, `monto_pagado`, `fecha_pago`, `metodo` |
+| `historial_cambios` | Bitácora de auditoría inmutable | `id`, `servicio_id`, `tipo_evento`, `detalles`, `usuario`, `timestamp` |
+| `usuarios` | Operadores con acceso al panel | `id`, `nombre`, `email`, `password_hash`, `rol`, `hora_notificacion` |
+| `push_subscriptions` | Dispositivos registrados para alertas | `endpoint`, `keys: { p256dh, auth }`, `userId`, `updated_at` |
 
 ---
 
-## ✨ Funcionalidades principales
+## 🔔 Notificaciones Push Nativas
 
-### 👥 Gestión de clientes
+A diferencia de las alertas web tradicionales que se congelan cuando el usuario bloquea su teléfono, Platnex implementa el protocolo de **Web Push RFC 8291 con llaves VAPID**:
 
-Permite:
-
-- Registrar clientes.
-- Editar información.
-- Consultar clientes.
-- Registrar teléfono.
-- Registrar correo.
-- Registrar notas.
-- Consultar servicios contratados.
-- Consultar el correo utilizado actualmente en cada perfil.
+1. **Registro**: En `Configuración > Activar Alertas`, el dispositivo genera un canal cifrado con los servidores de Apple (si es iPhone) o Google (si es Android).
+2. **Almacenamiento**: La clave pública y el endpoint se almacenan en la colección `push_subscriptions`.
+3. **Disparo Remoto**: El backend en Cloud Run envía un payload criptográfico firmado con VAPID a `push.apple.com` o `fcm.googleapis.com`.
+4. **Despertar de Pantalla**: El sistema operativo del teléfono recibe el paquete a nivel de kernel, activa la pantalla, hace sonar el tono oficial de notificación y muestra el banner con el logo de Platnex.
 
 ---
 
-### 📺 Gestión de servicios
-
-Cada cliente puede tener uno o varios servicios.
-
-Ejemplo:
-
-```text
-Juan Pérez
-
-Netflix       $25.000
-Disney+       $15.000
-Spotify       $10.000
-```
-
-Cada servicio mantiene su propia información:
-
-- Plataforma.
-- Valor.
-- Fecha de vencimiento.
-- Estado.
-- Cuenta / correo del perfil.
-- PIN.
-- Notas.
-- Historial de pagos.
-
-Esto permite cancelar un servicio específico sin eliminar al cliente.
-
----
-
-## 💰 Sistema de cobros
-
-La aplicación identifica:
-
-- Cobros próximos.
-- Cobros del día.
-- Cobros vencidos.
-- Clientes que confirmaron renovación.
-- Clientes que aún no han realizado el pago.
-- Servicios pendientes de cancelación.
-
-El sistema genera automáticamente la información necesaria para realizar el seguimiento.
-
----
-
-## 📱 Recordatorios por WhatsApp
-
-La aplicación **no envía automáticamente el mensaje**.
-
-En su lugar, genera un enlace que abre WhatsApp con el mensaje preparado.
-
-El administrador decide cuándo presionar **Enviar**.
-
-### Primer recordatorio
-
-Ejemplo:
-
-> Hola Juan 👋
->
-> Te escribo porque tu servicio de Netflix vence  
-> el día 01/09/2026.
->
-> El valor de la renovación es de $25.000.
->
-> ¿Deseas renovar?
->
-> Puedes realizar el pago y  
-> enviarme el comprobante por este medio.
->
-> ¡Gracias! 😊
-
----
-
-## ⏱️ Flujo de renovación
-
-El sistema utiliza un flujo controlado de renovación.
-
-```text
-Servicio próximo a vencer
-          │
-          ▼
-Enviar recordatorio
-          │
-          ▼
-¿Cliente renueva?
-     │           │
-    NO           SÍ
-     │           │
-     │           ▼
-     │      ¿Realizó pago?
-     │        │       │
-     │       SÍ       NO
-     │        │       │
-     │        │       ▼
-     │        │   Esperar 24 h
-     │        │       │
-     │        │       ▼
-     │        │   Recordatorio
-     │        │       │
-     │        │       ▼
-     │        │   Esperar hasta
-     │        │   completar 36 h
-     │        │       │
-     │        │       ▼
-     │        │   Generar alerta
-     │        │   de cancelación
-     │        │
-     ▼        ▼
- Cancelar   Renovar
- servicio   servicio
-```
-
----
-
-## 🔔 Recordatorio de pago pendiente
-
-Cuando el cliente confirma que desea renovar pero todavía no realiza el pago, se puede generar el siguiente mensaje:
-
-> Hola Juan 👋
->
-> Te recuerdo que tenemos pendiente el pago  
-> de la renovación de tu servicio.
->
-> Por favor envíame el comprobante para poder confirmar y así continuar  
-> con el servicio.
->
-> Gracias.
-
----
-
-## ❌ Cancelación por falta de pago
-
-Si el cliente confirma que desea renovar pero no realiza el pago dentro del período establecido:
-
-1. Se registra la confirmación de renovación.
-2. Se inicia el período de espera.
-3. Se envía el recordatorio correspondiente.
-4. Al cumplirse las 36 horas sin pago, el servicio queda pendiente de cancelación.
-5. El sistema genera una alerta para el administrador.
-6. El administrador cancela el servicio correspondiente.
-7. El servicio deja de aparecer como activo para el cliente.
-
-### Importante
-
-La aplicación **no elimina al cliente** por cancelar un servicio.
-
-Si un cliente tiene:
-
-```text
-Netflix
-Disney+
-Spotify
-```
-
-y cancela Disney+:
-
-```text
-Netflix   → Activo
-Disney+   → Cancelado
-Spotify   → Activo
-```
-
-Solo se modifica el servicio cancelado.
-
----
-
-## 📅 Cálculo de próximas fechas
-
-La renovación utiliza **días calendario**.
-
-Ejemplo:
-
-```text
-Pago:             31/08/2026
-Próxima fecha:    30/09/2026
-```
-
-Otro ejemplo:
-
-```text
-Pago:             15/09/2026
-Próxima fecha:    15/10/2026
-```
-
-El período de 24/36 horas utilizado para los recordatorios **no modifica la fecha mensual de renovación**.
-
-La nueva fecha se calcula a partir de la fecha correspondiente al ciclo de servicio.
-
----
-
-## 💳 Facturación de plataformas
-
-La aplicación también controla los pagos que realiza el administrador a las plataformas.
-
-La sección:
-
-```text
-FACTURACION
-```
-
-permite consultar:
-
-- Plataforma / cuenta.
-- Valor a pagar.
-- Fecha de pago.
-- Estado del pago.
-- Notas.
-- Total de gastos.
-- Ingresos provenientes de los clientes.
-- Ganancia estimada.
-
-Ejemplo:
-
-```text
-Ingresos de clientes
-        -
-Pagos realizados a plataformas
-        =
-Ganancia
-```
-
----
-
-## 📊 Google Sheets como fuente de datos
-
-Google Sheets funciona como la fuente de persistencia del sistema.
-
-La aplicación lee y escribe los datos directamente en el Sheet.
-
-La interfaz de la aplicación tiene prioridad operativa sobre la edición manual de las hojas.
-
-Las hojas internas utilizadas por la aplicación pueden mantenerse ocultas para evitar modificaciones accidentales.
-
----
-
-## 🔐 Seguridad
-
-La aplicación cuenta con autenticación mediante usuario y contraseña.
-
-Las contraseñas **no se almacenan en texto plano**.
-
-Se utiliza almacenamiento mediante hash con salt y mecanismos de validación para evitar guardar la contraseña original.
-
-Las credenciales y configuraciones sensibles no deben almacenarse directamente en el código fuente ni publicarse en GitHub.
-
----
-
-## 👨‍👩‍👧‍👦 Usuarios
-
-La aplicación está diseñada para permitir el acceso de más de un administrador.
-
-El administrador y su esposa pueden trabajar sobre:
-
-- Los mismos clientes.
-- Los mismos servicios.
-- Los mismos pagos.
-- Las mismas plataformas.
-- La misma facturación.
-
-No se duplican los clientes ni la información.
-
----
-
-## 📱 Diseño responsive
-
-La aplicación está diseñada principalmente para:
-
-### 📱 Móvil
-
-- iPhone
-- Android
-- Pantallas pequeñas
-
-### 📲 Tablet
-
-- iPad
-- Tablets Android
-
-### 💻 Desktop
-
-- Windows
-- macOS
-- Linux
-
-Las vistas móviles tendrán componentes y distribución optimizados para pantallas táctiles.
-
----
-
-## ⚡ Automatizaciones
-
-Google Apps Script utiliza triggers programados para ejecutar procesos automáticos.
-
-Entre ellos:
-
-- Detectar próximos vencimientos.
-- Actualizar estados.
-- Detectar pagos pendientes.
-- Controlar períodos de espera.
-- Generar alertas de cancelación.
-- Mantener actualizados los estados de los servicios.
-
-Las automatizaciones se ejecutan independientemente de que la aplicación web esté abierta.
-
----
-
-## 📁 Estructura del proyecto
+## 📁 Estructura del Repositorio
 
 ```text
 app-cobros/
-│
-├── src/
-│   ├── components/
-│   ├── pages/
-│   ├── layouts/
-│   ├── services/
-│   ├── hooks/
-│   ├── context/
-│   ├── types/
-│   ├── utils/
-│   └── App.tsx
-│
-├── Apps Script/
-│   ├── Code.gs
-│   ├── auth.gs
-│   ├── clients.gs
-│   ├── services.gs
-│   ├── payments.gs
-│   ├── billing.gs
-│   ├── scheduler.gs
-│   ├── reminders.gs
-│   ├── cancellations.gs
-│   ├── sheets.gs
-│   ├── security.gs
-│   └── utils.gs
-│
 ├── public/
-├── docs/
-├── .env.example
-├── .gitignore
+│   ├── custom-sw.js            # Lógica personalizada del Service Worker para Push
+│   ├── favicon.svg             # Favicon vectorial
+│   └── logo.png                # Logo oficial Platnex - Tu Mundo Digital
+├── server/                     # Backend API en Google Cloud Run
+│   ├── src/
+│   │   ├── config/             # Conexión Firebase Admin y Firestore
+│   │   ├── routes/             # Endpoints (auth, clients, services, cobros, notifications)
+│   │   ├── services/           # Lógica de base de datos y migración
+│   │   ├── utils/              # Formateo de fechas y matemáticas de ciclos
+│   │   └── index.ts            # Punto de entrada Express
+│   ├── Dockerfile              # Empaquetado de contenedor ligero Node.js Alpine
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── .env.example
+├── src/                        # Frontend React 19 + PWA
+│   ├── components/
+│   │   ├── common/             # Modales (pago, instalación PWA), Badges, Botón WhatsApp
+│   │   ├── desktop/            # Sidebar para pantallas de escritorio
+│   │   └── mobile/             # BottomNav y Header móvil
+│   ├── context/                # Contexto global de autenticación (AuthContext)
+│   ├── pages/                  # Vistas principales (Dashboard, Cobros, Clientes, Cuentas, etc.)
+│   ├── services/               # Cliente HTTP Axios/Fetch hacia Cloud Run
+│   ├── types/                  # Definiciones de tipos TypeScript
+│   ├── utils/                  # Generador de enlaces WhatsApp y filtros
+│   ├── App.tsx                 # Enrutador y layout principal
+│   └── main.tsx
+├── firebase.json               # Configuración de Firebase Hosting y PWA SPA Rewrite
+├── vite.config.ts              # Configuración Vite, Tailwind CSS y VitePWA
 ├── package.json
-├── tsconfig.json
-├── vite.config.ts
 └── README.md
 ```
 
 ---
 
-## 🚀 Instalación
+## 💻 Instalación y Desarrollo Local
+
+### Prerrequisitos
+- **Node.js**: v20 o superior.
+- **npm**: v10 o superior.
+- Cuenta de **Google Cloud Platform** con Firestore habilitado en modo Nativo.
 
 ### 1. Clonar el repositorio
-
 ```bash
-git clone https://github.com/CDluyzGonzalez/app-cobros.git
+git clone https://github.com/tu-usuario/app-cobros.git
 cd app-cobros
 ```
 
-### 2. Instalar dependencias
-
+### 2. Configurar y levantar el Backend (API)
 ```bash
+cd server
 npm install
-```
-
-### 3. Configurar variables de entorno
-
-Crear un archivo `.env` basado en `.env.example`.
-
-Ejemplo:
-
-```env
-VITE_API_URL=https://script.google.com/macros/s/TU_SCRIPT_ID/exec
-```
-
-No subir `.env` al repositorio.
-
-### 4. Iniciar el entorno de desarrollo
-
-```bash
+cp .env.example .env
+# Variables requeridas en .env: PORT=8080, GCP_PROJECT_ID, JWT_SECRET, VAPID_KEYS
 npm run dev
 ```
+*El servidor Express iniciará en `http://localhost:8080`.*
 
-### 5. Abrir la aplicación
+### 3. Configurar y levantar el Frontend (PWA)
+En otra pestaña de la terminal:
+```bash
+cd ..
+npm install
+npm run dev
+```
+*La aplicación web Vite iniciará en `http://localhost:3000` (configurado en `vite.config.ts`).*
 
-La URL será mostrada por Vite en la terminal.
+---
 
-Normalmente:
+## 🚀 Despliegue a Producción
 
-```text
-http://localhost:5173
+El proyecto está preparado para desplegarse con dos comandos directos:
+
+### 1. Desplegar el Backend a Google Cloud Run
+```bash
+cd server
+gcloud run deploy app-cobros-api \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --project app-cobros-v2
+```
+
+### 2. Desplegar el Frontend a Firebase Hosting
+```bash
+cd ..
+npm run build
+npx firebase-tools deploy --only hosting
 ```
 
 ---
 
-## 🔄 Flujo general de datos
+## 🔐 Seguridad y Gestión de Acceso
 
-```text
-Usuario
-   │
-   ▼
-React / TypeScript
-   │
-   │ HTTP + JSON
-   ▼
-Google Apps Script
-   │
-   ├── Autenticación
-   ├── Lógica de negocio
-   ├── Validaciones
-   └── Servicios
-   │
-   ▼
-Google Sheets
-   │
-   └── Persistencia
-```
+- **Cifrado de Contraseñas**: Cifrado unidireccional con **Bcrypt** (salt rounds = 10). Las contraseñas nunca se guardan en texto plano.
+- **Sesiones Cifradas**: Tokens de acceso basados en **JWT (JSON Web Tokens)** con firma secreta configurable y expiración automática.
+- **Llave Maestra de Recuperación**: Si el administrador olvida su contraseña, el sistema incluye un mecanismo de restablecimiento de emergencia protegido por la variable de entorno `MASTER_RECOVERY_KEY` en el servidor, evitando exponer accesos o depender de servicios SMTP externos.
+- **Protección contra Inyecciones**: Todas las consultas a la base de datos se ejecutan a través del SDK oficial de Cloud Firestore con tipado estricto.
+- **Archivos Sensibles Protegidos**: Las llaves de cuentas de servicio (`serviceAccountKey.json`), tokens y archivos de entorno (`.env`) están estrictamente excluidos en `.gitignore` para evitar filtraciones en repositorios públicos o privados.
 
 ---
 
-## 📌 Estado del proyecto
+## 👨‍💻 Autor
 
-Proyecto en desarrollo.
-
-### Próximas etapas
-
-- [ ] Configuración de Google Apps Script.
-- [ ] Conexión con Google Sheets.
-- [ ] Estructura definitiva de datos.
-- [ ] Sistema de autenticación.
-- [ ] Gestión de clientes.
-- [ ] Gestión de servicios.
-- [ ] Sistema de cobros.
-- [ ] Sistema de recordatorios.
-- [ ] Scheduler automático.
-- [ ] Sistema de cancelaciones.
-- [ ] Módulo de facturación.
-- [ ] Dashboard.
-- [ ] Diseño móvil.
-- [ ] Pruebas.
-- [ ] Despliegue.
+**Carlos D'Luyz**  
+Desarrollador de Software | Estudiante de Ingeniería de Sistemas
 
 ---
 
-## 👤 Autor
+## 📄 Licencia
 
-**Carlos D'Luyz Gonzalez**
-
-Ingeniería de Sistemas en formación · Desarrollador Web
-
-- [GitHub](https://github.com/CDluyzGonzalez)
-- [LinkedIn](https://www.linkedin.com/in/cdluyz/)
-
----
+Este proyecto es propiedad de **Platnex — Tu Mundo Digital**. Todos los derechos reservados © 2026.
+Desarrollado para optimización de cobros y administración digital de suscripciones.

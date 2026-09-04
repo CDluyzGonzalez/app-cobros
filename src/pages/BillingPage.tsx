@@ -44,7 +44,7 @@ export const BillingPage: React.FC<BillingPageProps> = ({ payments, accounts = [
     setIsModalOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     try {
       await api.savePlatformPayment(

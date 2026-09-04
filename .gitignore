@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.firebase
 *.local
 
 # Editor directories and files
@@ -32,3 +33,8 @@ dist-ssr
 *.json
 !package.json
 !tsconfig*.json
+!firebase.json
+
+# Credenciales y variables de entorno del servidor
+server/serviceAccountKey.json
+server/.env

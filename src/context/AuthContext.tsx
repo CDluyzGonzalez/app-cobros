@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { User } from '../types';
-import { api, clearSessionToken, getSessionToken, setSessionToken } from '../services/api';
+import { api, clearSession, getSessionToken, getStoredUser } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -13,22 +13,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('APP_COBROS_USER');
-    return saved && getSessionToken() ? JSON.parse(saved) : null;
+    return getSessionToken() ? getStoredUser() : null;
   });
 
   const login = async (email: string, pass: string) => {
-    const loggedUser = await api.login(email, pass);
-    setSessionToken(loggedUser.token || '');
-    const { token: _token, ...safeUser } = loggedUser;
-    setUser(safeUser as User);
-    localStorage.setItem('APP_COBROS_USER', JSON.stringify(safeUser));
+    const res = await api.login(email, pass);
+    setUser(res.user);
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('APP_COBROS_USER');
-    clearSessionToken();
+    clearSession();
   };
 
   return (

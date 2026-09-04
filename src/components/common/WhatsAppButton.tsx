@@ -43,11 +43,12 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
     <button
       onClick={handleClick}
       type="button"
-      className={`inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-medium rounded-xl shadow-sm transition-all text-xs active:scale-95 cursor-pointer ${className}`}
+      style={{ backgroundColor: '#4ec481' }}
+      className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-2.5 text-slate-950 font-bold rounded-xl shadow-md transition-all text-xs hover:brightness-105 active:scale-95 cursor-pointer ${className}`}
       title={`Enviar WhatsApp a ${nombre}`}
     >
-      <MessageCircle className="w-4 h-4 fill-white/20" />
-      <span>{type === 'reminder' ? 'Recordar 24h' : 'Cobrar WhatsApp'}</span>
+      <MessageCircle className="w-3.5 h-3.5 fill-slate-950/20" />
+      <span>WhatsApp</span>
     </button>
   );
 };

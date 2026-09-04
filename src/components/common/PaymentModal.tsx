@@ -32,7 +32,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   nextTargetDate.setDate(nextTargetDate.getDate() + 30);
   const nextDateFormatted = nextTargetDate.toISOString().split('T')[0];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');

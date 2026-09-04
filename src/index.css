@@ -1,17 +1,15 @@
 @import "tailwindcss";
 
-@layer base {
-  body {
-    /* usamos min-h-dvh para que se ajuste a los diferentes tamaños de pantalla */
-    @apply bg-slate-950 text-slate-100 antialiased font-sans select-none min-h-dvh;
-    -webkit-tap-highlight-color: transparent;
-
-    /* evitar el "rebote" de scroll en iOS */
-    overscroll-behavior-y: none;
-
-    /* Respetar la zona segura inferior en iOS */
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+body {
+  background-color: #020617;
+  color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Barras de desplazamiento personalizadas y utilidades */

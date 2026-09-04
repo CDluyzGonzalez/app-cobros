@@ -2,6 +2,7 @@ export type ServiceStatus =
   | 'ACTIVO'
   | 'POR_VENCER'
   | 'VENCIDO'
+  | 'EN_ESPERA'
   | 'RENOVACION_PENDIENTE'
   | 'PAGO_PENDIENTE'
   | 'RECORDATORIO_ENVIADO'
@@ -14,6 +15,8 @@ export interface User {
   email: string;
   rol: 'ADMIN' | 'OPERADOR';
   token?: string;
+  fcm_token?: string;
+  hora_notificacion?: string;
 }
 
 export interface Platform {
@@ -33,8 +36,8 @@ export interface Client {
   estado: string;
   created_at: string;
   updated_at: string;
-  updated_by: string;
-  version: number;
+  updated_by?: string;
+  version?: number;
 }
 
 /**
@@ -44,9 +47,14 @@ export interface ServiceEntity {
   id: string;
   cliente_id: string;
   cuenta_id: string;
+  correo_cuenta?: string;
+  plataforma?: string;
   perfil: string;
-  pin: string;
+  pin?: string;
+  pin_encrypted?: string;
   valor: number;
+  dia_ancla?: number;
+  fecha_inicio?: string;
   fecha_ultimo_pago: string;
   fecha_proximo_pago: string;
   fecha_cambio_estado: string;
@@ -54,8 +62,8 @@ export interface ServiceEntity {
   notas: string;
   created_at: string;
   updated_at: string;
-  updated_by: string;
-  version: number;
+  updated_by?: string;
+  version?: number;
 }
 
 /**
@@ -75,15 +83,17 @@ export interface Account {
   perfiles_totales: number;
   cupos_ocupados: number;
   costo_mensual: number;
-  dia_pago_plataforma: string;
+  dia_pago_plataforma: string | number;
   estado: string;
   notas: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PlatformPayment {
   id: string;
   cuenta_id: string;
-  plataforma: string;
+  plataforma?: string;
   concepto: string;
   valor: number;
   fecha_limite: string;
@@ -91,7 +101,7 @@ export interface PlatformPayment {
   estado: 'PENDIENTE' | 'PAGADO';
   notas: string;
   usuario_registro: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface ClientPayment {
@@ -104,29 +114,36 @@ export interface ClientPayment {
   metodo_pago: string;
   comprobante_ref: string;
   usuario_registro: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface DashboardMetrics {
-  totalServices: number;
-  totalIncome: number;
-  totalCosts: number;
-  profit: number;
-  overdueCount: number;
-  dueTodayCount: number;
-  upcomingCount: number;
-  pendingPaymentCount: number;
-  pendingCancelCount: number;
+  totalServices?: number;
+  totalIncome?: number;
+  totalCosts?: number;
+  profit?: number;
+  totalIngresosEsperados?: number;
+  totalCostosPlataformas?: number;
+  gananciaEstimada?: number;
+  serviciosActivos?: number;
+  pendientesHoyCount?: number;
+  totalPendienteHoyValor?: number;
+  overdueCount?: number;
+  dueTodayCount?: number;
+  upcomingCount?: number;
+  pendingPaymentCount?: number;
+  pendingCancelCount?: number;
 }
 
 export interface DashboardData {
   metrics: DashboardMetrics;
+  pendientesHoyYAtrasados?: Service[];
   cobros: {
     vencidos: Service[];
     hoy: Service[];
-    proximos: Service[];
-    pago_pendiente: Service[];
-    cancelacion_pendiente: Service[];
+    proximos?: Service[];
+    pago_pendiente?: Service[];
+    cancelacion_pendiente?: Service[];
   };
 }
 

@@ -35,9 +35,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
       case 'VENCIDO': return '🔴 Vencido';
       case 'PAGO_PENDIENTE': return '⏳ Pago Pendiente (24h)';
       case 'RECORDATORIO_ENVIADO': return '📩 Recordatorio Enviado';
-      case 'CANCELACION_PENDIENTE': return '⚠️ Cancelación Pendiente (36h)';
+      case 'EN_ESPERA': return '⏳ En Espera (24h)';
       case 'CANCELADO': return '⚪ Cancelado';
-      default: return status;
+      default:
+        if (typeof status === 'string' && (status.includes('T') || status.includes(':'))) {
+          return '🟢 Activo';
+        }
+        return status || '🟢 Activo';
     }
   };
 

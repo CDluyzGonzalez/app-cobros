@@ -28,7 +28,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     perfil: '',
     pin: '',
     valor: '25000',
-    fecha_proximo_pago: '2026-08-31',
+    fecha_proximo_pago: '2026-09-03',
     cuenta_id: '',
     correo_cuenta: '',
     notas: '',
@@ -43,10 +43,10 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     setIsClientModalOpen(true);
   };
 
-  const handleSaveClient = async (e: React.FormEvent) => {
+  const handleSaveClient = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     try {
-      await api.saveClient(clientForm, user || undefined);
+      await api.saveClient(clientForm, user?.nombre);
       setIsClientModalOpen(false);
       onRefresh();
     } catch (err: any) {
@@ -63,7 +63,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
         perfil: srv.perfil,
         pin: srv.pin || '',
         valor: srv.valor.toString(),
-        fecha_proximo_pago: srv.fecha_proximo_pago || '2026-08-31',
+        fecha_proximo_pago: (srv.fecha_proximo_pago || '').split('T')[0] || new Date().toISOString().split('T')[0],
         cuenta_id: srv.cuenta_id || '',
         correo_cuenta: srv.correo_cuenta || '',
         notas: srv.notas || '',
@@ -76,7 +76,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
         perfil: '',
         pin: '',
         valor: '20000',
-        fecha_proximo_pago: '2026-08-31',
+        fecha_proximo_pago: '2026-09-03',
         cuenta_id: '',
         correo_cuenta: '',
         notas: '',
@@ -85,7 +85,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     setIsServiceModalOpen(true);
   };
 
-  const handleSaveService = async (e: React.FormEvent) => {
+  const handleSaveService = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     try {
       await api.saveService(
@@ -93,7 +93,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
           ...serviceForm,
           valor: Number(serviceForm.valor),
         },
-        user || undefined
+        user?.nombre || 'Carlos'
       );
       setIsServiceModalOpen(false);
       onRefresh();
@@ -198,7 +198,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
                         className="p-2 bg-slate-950/70 border border-slate-800/60 rounded-xl flex items-center justify-between gap-2 hover:border-slate-700 cursor-pointer"
                       >
                         <div>
-                          <p className="text-xs font-semibold text-white">{srv.plataforma} · Editar</p>
+                          <p className="text-xs font-semibold text-white">{srv.plataforma || 'Netflix'} · Editar</p>
                           <p className="text-[10px] text-slate-400">
                             {srv.perfil ? `Perfil: ${srv.perfil}` : 'Perfil único'} {srv.pin ? `• PIN: ${srv.pin}` : ''}
                           </p>
@@ -354,14 +354,19 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 mb-1">Próximo Vencimiento</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Fecha de Inicio / Primer Vencimiento (Día Ancla Fijo)
+                </label>
                 <input
                   type="date"
                   required
                   value={serviceForm.fecha_proximo_pago}
                   onChange={(e) => setServiceForm({ ...serviceForm, fecha_proximo_pago: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500 font-medium"
                 />
+                <p className="mt-1 text-[11px] text-emerald-400 font-medium">
+                  💡 Día ancla fijado: Día {serviceForm.fecha_proximo_pago ? Number(serviceForm.fecha_proximo_pago.split('-')[2]) : '1'}. Todos los meses renovará exactamente este mismo día.
+                </p>
               </div>
 
               <div>
