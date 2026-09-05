@@ -6,16 +6,20 @@ import { formatDateIso } from '../utils/dates.js';
 
 export const notificationsRouter = Router();
 
-// Configuración VAPID permanente para Web Push estándar (APNs / Apple / Google / Mozilla)
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BOInRR8LAGfSMbdyb19LZwPcdBqKUG8P25MhGcqhz0Ey1VCs9ygw55HpPC0tEP9NBzE0AXP_-w_l_ZGC53Jho6A';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'P9KX2YYH8e52P8UjPbkCge9HCuCl13ijwjvEKpQooiw';
+// Configuración VAPID para Web Push estándar (APNs / Apple / Google / Mozilla)
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@platnex.com';
 
-webpush.setVapidDetails(
-  VAPID_SUBJECT,
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    VAPID_SUBJECT,
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+  );
+} else {
+  console.warn('⚠️ VAPID keys no configuradas en variables de entorno.');
+}
 
 /**
  * GET /api/notifications/vapid-public-key

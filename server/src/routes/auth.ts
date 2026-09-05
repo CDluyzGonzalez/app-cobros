@@ -106,7 +106,11 @@ authRouter.put('/preferences', async (req: Request, res: Response) => {
 authRouter.post('/reset-password', async (req: Request, res: Response) => {
   try {
     const { email, masterKey, newPassword } = req.body;
-    const MASTER_KEY = process.env.MASTER_RECOVERY_KEY || 'Mayo2022';
+    const MASTER_KEY = process.env.MASTER_RECOVERY_KEY;
+
+    if (!MASTER_KEY) {
+      return res.status(500).json({ success: false, message: 'Clave Maestra no configurada en el servidor.' });
+    }
 
     if (!email || !masterKey || !newPassword) {
       return res.status(400).json({ success: false, message: 'Todos los campos son obligatorios' });
