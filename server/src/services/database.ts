@@ -1,4 +1,5 @@
 import { db } from '../config/firebase.js';
+import { isSamePlatform } from '../utils/dates.js';
 import { Client, Account, ServiceEntity, ServiceDTO, PlatformPayment, ClientPayment, User } from '../types/index.js';
 
 export class DatabaseService {
@@ -39,13 +40,20 @@ export class DatabaseService {
       const plataforma = (data.plataforma || '').toLowerCase().trim();
 
       // Contar servicios activos asociados a esta cuenta
+      // REGLA ESTRICTA: La plataforma DEBE coincidir obligatoriamente
       const activeCount = services.filter(s => {
         if (s.estado === 'CANCELADO') return false;
+        const servicePlat = (s.plataforma || '').toLowerCase().trim();
+
+        // 1. La plataforma debe coincidir (evita mezclar Apple Music con Netflix/Disney/etc.)
+        if (!isSamePlatform(plataforma, servicePlat)) {
+          return false;
+        }
+
+        // 2. Si la plataforma coincide, vincular por cuenta_id o por correo
         if (s.cuenta_id && s.cuenta_id === accountId) return true;
         if (correo && s.correo_cuenta && s.correo_cuenta.toLowerCase().trim() === correo) {
-          if (!plataforma || (s.plataforma || '').toLowerCase().trim() === plataforma) {
-            return true;
-          }
+          return true;
         }
         return false;
       }).length;

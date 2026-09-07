@@ -26,6 +26,22 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ accounts, services =
     notas: '',
   });
 
+  const isSamePlatform = (platA: string, platB: string): boolean => {
+    const a = (platA || '').toLowerCase().trim();
+    const b = (platB || '').toLowerCase().trim();
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.includes('netflix') && b.includes('netflix')) return true;
+    if (a.includes('disney') && b.includes('disney')) return true;
+    if (a.includes('prime') && b.includes('prime')) return true;
+    if (a.includes('max') && b.includes('max')) return true;
+    if (a.includes('spotify') && b.includes('spotify')) return true;
+    if (a.includes('apple') && b.includes('apple')) return true;
+    if (a.includes('canva') && b.includes('canva')) return true;
+    if (a.includes('directv') && b.includes('directv')) return true;
+    return false;
+  };
+
   // Función para obtener los servicios activos vinculados a una cuenta
   const getAccountActiveServices = (acc: Account): Service[] => {
     const accCorreo = (acc.correo_cuenta || '').toLowerCase().trim();
@@ -33,13 +49,16 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ accounts, services =
 
     return services.filter((s) => {
       if (s.estado === 'CANCELADO') return false;
+      const srvPlat = (s.plataforma || '').toLowerCase().trim();
+
+      // REGLA FUNDAMENTAL: La plataforma DEBE coincidir
+      if (!isSamePlatform(accPlat, srvPlat)) return false;
+
       // 1. Coincidencia directa por cuenta_id
       if (s.cuenta_id && acc.id && s.cuenta_id === acc.id) return true;
-      // 2. Coincidencia por correo y plataforma
+      // 2. Coincidencia por correo
       if (accCorreo && s.correo_cuenta && s.correo_cuenta.toLowerCase().trim() === accCorreo) {
-        if (!accPlat || (s.plataforma || '').toLowerCase().trim() === accPlat) {
-          return true;
-        }
+        return true;
       }
       return false;
     });

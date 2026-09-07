@@ -34,6 +34,39 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     notas: '',
   });
 
+  const isSamePlatform = (platA: string, platB: string): boolean => {
+    const a = (platA || '').toLowerCase().trim();
+    const b = (platB || '').toLowerCase().trim();
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.includes('netflix') && b.includes('netflix')) return true;
+    if (a.includes('disney') && b.includes('disney')) return true;
+    if (a.includes('prime') && b.includes('prime')) return true;
+    if (a.includes('max') && b.includes('max')) return true;
+    if (a.includes('spotify') && b.includes('spotify')) return true;
+    if (a.includes('apple') && b.includes('apple')) return true;
+    if (a.includes('canva') && b.includes('canva')) return true;
+    if (a.includes('directv') && b.includes('directv')) return true;
+    return false;
+  };
+
+  // Cuentas pertenecientes a la plataforma seleccionada en el formulario
+  const matchingAccounts = accounts.filter((acc) =>
+    isSamePlatform(acc.plataforma, serviceForm.plataforma)
+  );
+
+  const getAccOccupied = (acc: Account) => {
+    return services.filter(
+      (s) =>
+        s.estado !== 'CANCELADO' &&
+        isSamePlatform(s.plataforma, acc.plataforma) &&
+        (s.cuenta_id === acc.id ||
+          (s.correo_cuenta &&
+            acc.correo_cuenta &&
+            s.correo_cuenta.toLowerCase().trim() === acc.correo_cuenta.toLowerCase().trim()))
+    ).length;
+  };
+
   const handleOpenClientModal = (client?: Client) => {
     if (client) {
       setClientForm({ id: client.id, nombre: client.nombre, telefono: client.telefono, correo: client.correo, notas: client.notas });
@@ -370,25 +403,79 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 mb-1">Correo de la cuenta de plataforma</label>
-                <input
-                  type="email"
-                  list="accounts-list-options"
-                  placeholder="cuenta@correo.com"
-                  value={serviceForm.correo_cuenta}
-                  onChange={(e) => setServiceForm({ ...serviceForm, correo_cuenta: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
-                />
-                <datalist id="accounts-list-options">
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.correo_cuenta}>
-                      {acc.plataforma} ({acc.cupos_ocupados}/{acc.perfiles_totales} cupos)
-                    </option>
-                  ))}
-                </datalist>
-                <p className="mt-1 text-[10px] text-slate-500">
-                  Se vinculará o creará la cuenta de {serviceForm.plataforma} con este correo. Cuentas detectadas: {accounts.length}.
-                </p>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Cuenta Matriz ({serviceForm.plataforma})
+                </label>
+                {matchingAccounts.length > 0 ? (
+                  <div className="space-y-2">
+                    <select
+                      value={
+                        serviceForm.cuenta_id ||
+                        matchingAccounts.find(
+                          (a) =>
+                            a.correo_cuenta.toLowerCase().trim() ===
+                            (serviceForm.correo_cuenta || '').toLowerCase().trim()
+                        )?.id ||
+                        (serviceForm.correo_cuenta ? '__CUSTOM__' : '')
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__CUSTOM__') {
+                          setServiceForm({ ...serviceForm, cuenta_id: '' });
+                        } else {
+                          const chosen = accounts.find((a) => a.id === val);
+                          if (chosen) {
+                            setServiceForm({
+                              ...serviceForm,
+                              cuenta_id: chosen.id,
+                              correo_cuenta: chosen.correo_cuenta,
+                            });
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500 font-medium"
+                    >
+                      <option value="">-- Selecciona la cuenta de {serviceForm.plataforma} --</option>
+                      {matchingAccounts.map((acc) => {
+                        const occupied = getAccOccupied(acc);
+                        const total = Number(acc.perfiles_totales) || 1;
+                        const free = Math.max(0, total - occupied);
+                        return (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.correo_cuenta} ({occupied}/{total} ocupados - {free > 0 ? `${free} libres 🟢` : 'LLENA 🔴'})
+                          </option>
+                        );
+                      })}
+                      <option value="__CUSTOM__">➕ Escribir otro correo / Nueva cuenta</option>
+                    </select>
+
+                    {/* Si eligió escribir otro correo manual o no ha seleccionado del desplegable */}
+                    {(!serviceForm.cuenta_id || !matchingAccounts.some((a) => a.id === serviceForm.cuenta_id)) && (
+                      <input
+                        type="email"
+                        required
+                        placeholder="cuenta@correo.com"
+                        value={serviceForm.correo_cuenta}
+                        onChange={(e) => setServiceForm({ ...serviceForm, correo_cuenta: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="email"
+                      required
+                      placeholder="cuenta@correo.com"
+                      value={serviceForm.correo_cuenta}
+                      onChange={(e) => setServiceForm({ ...serviceForm, correo_cuenta: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      No hay cuentas matrices de {serviceForm.plataforma} registradas. Se creará automáticamente al guardar.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2">

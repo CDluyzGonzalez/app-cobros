@@ -50,3 +50,23 @@ export function getDaysDifference(targetDateStr: string, baseDate: Date = new Da
   const diffTime = target.getTime() - base.getTime();
   return Math.round(diffTime / (1000 * 60 * 60 * 24));
 }
+
+/**
+ * Compara dos plataformas de manera inteligente considerando variaciones
+ * (ej: "Netflix" y "Netflix miembro extra", "Disney" y "Disney+", "Apple Music" y "Apple")
+ */
+export function isSamePlatform(platA: string, platB: string): boolean {
+  const a = (platA || '').toLowerCase().trim();
+  const b = (platB || '').toLowerCase().trim();
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes('netflix') && b.includes('netflix')) return true;
+  if (a.includes('disney') && b.includes('disney')) return true;
+  if (a.includes('prime') && b.includes('prime')) return true;
+  if (a.includes('max') && b.includes('max')) return true;
+  if (a.includes('spotify') && b.includes('spotify')) return true;
+  if (a.includes('apple') && b.includes('apple')) return true;
+  if (a.includes('canva') && b.includes('canva')) return true;
+  if (a.includes('directv') && b.includes('directv')) return true;
+  return false;
+}

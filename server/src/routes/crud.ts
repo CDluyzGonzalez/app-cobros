@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../config/firebase.js';
 import { DatabaseService } from '../services/database.js';
-import { formatDateIso, getNextFixedMonthDate } from '../utils/dates.js';
+import { formatDateIso, getNextFixedMonthDate, isSamePlatform } from '../utils/dates.js';
 import { Client, Account, PlatformPayment } from '../types/index.js';
 
 export const crudRouter = Router();
@@ -148,18 +148,24 @@ crudRouter.post('/services', async (req: Request, res: Response) => {
 
     let targetCuentaId = cuenta_id || '';
 
-    // Si escribió un correo de cuenta, buscar o crear la cuenta matriz automáticamente
-    if (correo_cuenta) {
-      const accSnap = await db.collection('cuentas')
-        .where('correo_cuenta', '==', correo_cuenta.toLowerCase().trim())
-        .get();
+    // Si ya envió cuenta_id directa, verificar y usar
+    if (cuenta_id) {
+      targetCuentaId = cuenta_id;
+    } else if (correo_cuenta) {
+      const cleanCorreo = correo_cuenta.toLowerCase().trim();
+      const targetPlat = plataforma || 'Netflix';
+      const accounts = await DatabaseService.getAccounts();
+      const matched = accounts.find(a => 
+        (a.correo_cuenta || '').toLowerCase().trim() === cleanCorreo &&
+        isSamePlatform(a.plataforma, targetPlat)
+      );
 
-      if (!accSnap.empty) {
-        targetCuentaId = accSnap.docs[0].id;
+      if (matched) {
+        targetCuentaId = matched.id;
       } else {
         const newAcc = await db.collection('cuentas').add({
-          plataforma: plataforma || 'Netflix',
-          correo_cuenta: correo_cuenta.toLowerCase().trim(),
+          plataforma: targetPlat,
+          correo_cuenta: cleanCorreo,
           password_encrypted: '',
           perfiles_totales: 5,
           cupos_ocupados: 1,
@@ -217,15 +223,20 @@ crudRouter.put('/services/:id', async (req: Request, res: Response) => {
       updateData.dia_ancla = Number(cleanDate.split('-')[2]) || 1;
     }
 
-    // Vincular cuenta matriz por correo si se ingresó uno
-    if (req.body.correo_cuenta) {
+    // Vincular cuenta matriz respetando la plataforma
+    if (req.body.cuenta_id) {
+      updateData.cuenta_id = req.body.cuenta_id;
+    } else if (req.body.correo_cuenta) {
       updateData.correo_cuenta = req.body.correo_cuenta.trim();
-      const accSnap = await db.collection('cuentas')
-        .where('correo_cuenta', '==', req.body.correo_cuenta.toLowerCase().trim())
-        .get();
-
-      if (!accSnap.empty) {
-        updateData.cuenta_id = accSnap.docs[0].id;
+      const cleanCorreo = req.body.correo_cuenta.toLowerCase().trim();
+      const targetPlat = req.body.plataforma || updateData.plataforma || '';
+      const accounts = await DatabaseService.getAccounts();
+      const matched = accounts.find(a => 
+        (a.correo_cuenta || '').toLowerCase().trim() === cleanCorreo &&
+        (!targetPlat || isSamePlatform(a.plataforma, targetPlat))
+      );
+      if (matched) {
+        updateData.cuenta_id = matched.id;
       }
     }
 
@@ -307,6 +318,45 @@ crudRouter.post('/billing/:id/pay', async (req: Request, res: Response) => {
     });
 
     res.json({ success: true, message: `Pago registrado. Siguiente vencimiento: ${nextLimit}` });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Revertir pago de plataforma (Deshacer pago accidental)
+crudRouter.post('/billing/:id/undo-pay', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const payDoc = await db.collection('pagos_plataformas').doc(id).get();
+    if (!payDoc.exists) return res.status(404).json({ success: false, message: 'Pago no encontrado' });
+
+    const pay = payDoc.data() as PlatformPayment;
+
+    // 1. Revertir el estado a PENDIENTE
+    await db.collection('pagos_plataformas').doc(id).update({
+      estado: 'PENDIENTE',
+      fecha_pago_real: '',
+      updated_at: new Date().toISOString(),
+    });
+
+    // 2. Si se había generado el cobro del próximo mes, limpiarlo para no duplicar
+    const currentLimit = pay.fecha_limite || '';
+    if (currentLimit) {
+      const diaAncla = Number(currentLimit.split('-')[2]) || 1;
+      const nextLimit = getNextFixedMonthDate(currentLimit, diaAncla);
+
+      const nextSnap = await db.collection('pagos_plataformas')
+        .where('concepto', '==', pay.concepto)
+        .where('fecha_limite', '==', nextLimit)
+        .where('estado', '==', 'PENDIENTE')
+        .get();
+
+      for (const doc of nextSnap.docs) {
+        await doc.ref.delete();
+      }
+    }
+
+    res.json({ success: true, message: 'Pago revertido a Pendiente exitosamente' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

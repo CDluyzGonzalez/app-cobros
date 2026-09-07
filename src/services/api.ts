@@ -165,6 +165,8 @@ export const api = {
       body: JSON.stringify({ usuario: typeof usuario === 'string' ? usuario : usuario?.nombre }),
     }),
   markPlatformPaymentPaid: (id: string, usuario?: any) => api.payPlatformInvoice(id, usuario),
+  undoPlatformInvoice: (id: string) =>
+    request<{ success: boolean; message: string }>(`/billing/${id}/undo-pay`, { method: 'POST' }),
   deletePlatformPayment: (id: string) =>
     request<{ success: boolean }>(`/billing/${id}`, { method: 'DELETE' }).catch(() => ({ success: true })),
 
