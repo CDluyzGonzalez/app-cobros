@@ -66,10 +66,15 @@ crudRouter.get('/accounts', async (_req, res) => {
 crudRouter.post('/accounts', async (req: Request, res: Response) => {
   try {
     const now = new Date().toISOString();
+    const { id: _ignoredId, ...accountData } = req.body;
     const docRef = await db.collection('cuentas').add({
-      ...req.body,
-      cupos_ocupados: Number(req.body.cupos_ocupados) || 0,
-      costo_mensual: Number(req.body.costo_mensual) || 0,
+      ...accountData,
+      plataforma: accountData.plataforma || 'Netflix',
+      correo_cuenta: (accountData.correo_cuenta || '').toLowerCase().trim(),
+      perfiles_totales: Number(accountData.perfiles_totales) || 5,
+      cupos_ocupados: Number(accountData.cupos_ocupados) || 0,
+      costo_mensual: Number(accountData.costo_mensual) || 0,
+      dia_pago_plataforma: String(accountData.dia_pago_plataforma || '1'),
       estado: 'ACTIVA',
       created_at: now,
       updated_at: now,
@@ -83,8 +88,17 @@ crudRouter.post('/accounts', async (req: Request, res: Response) => {
 crudRouter.put('/accounts/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (!id || id.trim() === '') {
+      return res.status(400).json({ success: false, message: 'ID de cuenta requerido' });
+    }
+    const { id: _ignoredId, ...accountData } = req.body;
     await db.collection('cuentas').doc(id).update({
-      ...req.body,
+      ...accountData,
+      plataforma: accountData.plataforma || 'Netflix',
+      correo_cuenta: (accountData.correo_cuenta || '').toLowerCase().trim(),
+      perfiles_totales: Number(accountData.perfiles_totales) || 5,
+      costo_mensual: Number(accountData.costo_mensual) || 0,
+      dia_pago_plataforma: String(accountData.dia_pago_plataforma || '1'),
       updated_at: new Date().toISOString(),
     });
     res.json({ success: true });
@@ -96,6 +110,9 @@ crudRouter.put('/accounts/:id', async (req: Request, res: Response) => {
 crudRouter.delete('/accounts/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (!id || id.trim() === '') {
+      return res.status(400).json({ success: false, message: 'ID de cuenta no especificado' });
+    }
     await db.collection('cuentas').doc(id).delete();
     res.json({ success: true, message: 'Cuenta eliminada correctamente' });
   } catch (err: any) {

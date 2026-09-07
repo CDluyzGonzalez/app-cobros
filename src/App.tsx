@@ -406,6 +406,7 @@ function MainApp() {
           {currentTab === 'accounts' && (
             <AccountsPage
               accounts={accounts}
+              services={services}
               onRefresh={loadData}
             />
           )}

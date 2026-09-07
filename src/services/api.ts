@@ -107,12 +107,19 @@ export const api = {
     // ── CUENTAS MATRICES ─────────────────────────────────────────────────────
   getAccounts: () => request<Account[]>('/accounts'),
   saveAccount: (account: Partial<Account>, _user?: any) => {
-    if (account.id) {
-      return request<{ success: boolean }>(`/accounts/${account.id}`, { method: 'PUT', body: JSON.stringify(account) });
+    const cleanId = (account.id || '').trim();
+    if (cleanId) {
+      return request<{ success: boolean }>(`/accounts/${cleanId}`, { method: 'PUT', body: JSON.stringify(account) });
     }
     return request<{ success: boolean; id: string }>('/accounts', { method: 'POST', body: JSON.stringify(account) });
   },
-  deleteAccount: (id: string) => request<{ success: boolean }>(`/accounts/${id}`, { method: 'DELETE' }),
+  deleteAccount: (id: string) => {
+    const cleanId = (id || '').trim();
+    if (!cleanId) {
+      throw new Error('ID de cuenta inválido para eliminar.');
+    }
+    return request<{ success: boolean }>(`/accounts/${cleanId}`, { method: 'DELETE' });
+  },
   cancelAccount: (id: string) => api.deleteAccount(id),
 
   // ── CLIENTES ─────────────────────────────────────────────────────────────
