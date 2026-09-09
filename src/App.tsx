@@ -277,8 +277,11 @@ function MainApp() {
     return <LoginPage />;
   }
 
-  const handleOpenPaymentModal = (service: Service) => {
+  const [selectedServicesGroupForPayment, setSelectedServicesGroupForPayment] = useState<Service[] | undefined>(undefined);
+
+  const handleOpenPaymentModal = (service: Service, servicesGroup?: Service[]) => {
     setSelectedServiceForPayment(service);
+    setSelectedServicesGroupForPayment(servicesGroup);
     setIsPaymentModalOpen(true);
   };
 
@@ -286,19 +289,28 @@ function MainApp() {
     loadData();
   };
 
-  const handleCancelService = async (service: Service) => {
-    if (!confirm(`¿Marcar como no renovado el servicio ${service.plataforma} de ${service.cliente_nombre}?`)) return;
-    await api.changeStatus(service.id, 'CANCELADO', 'Cliente no renueva el servicio.');
+  const handleCancelService = async (service: Service, servicesGroup?: Service[]) => {
+    const list = servicesGroup && servicesGroup.length > 0 ? servicesGroup : [service];
+    const names = list.map((s) => s.plataforma).join(', ');
+    if (!confirm(`¿Marcar como no renovado el servicio (${names}) de ${service.cliente_nombre}?`)) return;
+    for (const s of list) {
+      await api.changeStatus(s.id, 'CANCELADO', 'Cliente no renueva el servicio.');
+    }
     loadData();
   };
 
-  const handleWait24hService = async (service: Service) => {
+  const handleWait24hService = async (service: Service, servicesGroup?: Service[]) => {
+    const list = servicesGroup && servicesGroup.length > 0 ? servicesGroup : [service];
     if (user?.email === 'demo@appcobros.com') {
-      service.estado = 'EN_ESPERA';
+      list.forEach((s) => {
+        s.estado = 'EN_ESPERA';
+      });
       loadData();
       return;
     }
-    await api.wait24hService(service.id, user?.nombre || 'Carlos');
+    for (const s of list) {
+      await api.wait24hService(s.id, user?.nombre || 'Carlos');
+    }
     loadData();
   };
 
@@ -371,6 +383,7 @@ function MainApp() {
           {currentTab === 'dashboard' && (
             <DashboardPage
               data={dashboardData}
+              services={services}
               loading={loading}
               onNavigate={setCurrentTab}
               onOpenPaymentModal={handleOpenPaymentModal}
@@ -443,10 +456,12 @@ function MainApp() {
       {selectedServiceForPayment && (
         <PaymentModal
           service={selectedServiceForPayment}
+          servicesGroup={selectedServicesGroupForPayment}
           isOpen={isPaymentModalOpen}
           onClose={() => {
             setIsPaymentModalOpen(false);
             setSelectedServiceForPayment(null);
+            setSelectedServicesGroupForPayment(undefined);
           }}
           onSuccess={handlePaymentSuccess}
         />

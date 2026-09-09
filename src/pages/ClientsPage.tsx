@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, Plus, Search, Layers, DollarSign, Calendar, Edit2, Shield, Key, Trash2 } from 'lucide-react';
 import { Account, Client, Service } from '../types';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { WhatsAppButton } from '../components/common/WhatsAppButton';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -206,12 +207,27 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
                     <h3 className="text-sm font-bold text-white">{client.nombre}</h3>
                     <p className="text-xs text-slate-400">{client.telefono || 'Sin WhatsApp'}</p>
                   </div>
-                  <button
-                    onClick={() => handleOpenClientModal(client)}
-                    className="p-1 text-slate-400 hover:text-white rounded-lg bg-slate-800/60"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {client.telefono && clientServices.length > 0 && (
+                      <WhatsAppButton
+                        nombre={client.nombre}
+                        plataforma={clientServices[0]?.plataforma || 'Servicio'}
+                        fecha={clientServices[0]?.fecha_proximo_pago || ''}
+                        valor={clientServices[0]?.valor || 0}
+                        telefono={client.telefono}
+                        clienteId={client.id}
+                        clientServices={clientServices}
+                        className="py-1 px-2 text-[11px]"
+                      />
+                    )}
+                    <button
+                      onClick={() => handleOpenClientModal(client)}
+                      className="p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800/60"
+                      title="Editar Cliente"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Services list for this client */}

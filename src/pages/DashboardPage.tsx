@@ -18,15 +18,17 @@ import { NavTab } from '../components/mobile/BottomNav';
 
 interface DashboardPageProps {
   data: DashboardData | null;
+  services?: Service[];
   loading: boolean;
   onNavigate: (tab: NavTab) => void;
-  onOpenPaymentModal: (service: Service) => void;
-  onCancelService: (service: Service) => void;
-  onWait24hService?: (service: Service) => void;
+  onOpenPaymentModal: (service: Service, servicesGroup?: Service[]) => void;
+  onCancelService: (service: Service, servicesGroup?: Service[]) => void;
+  onWait24hService?: (service: Service, servicesGroup?: Service[]) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
   data,
+  services,
   loading,
   onNavigate,
   onOpenPaymentModal,
@@ -71,6 +73,57 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const ganancia = metrics.gananciaEstimada ?? metrics.profit ?? (totalIngresos - totalCostos);
   const pendientesCount = metrics.pendientesHoyCount ?? listaPendientes.length;
 
+  // Agrupación de cobros pendientes por Cliente
+  const groupedPendientes = React.useMemo(() => {
+    const groupsMap = new Map<string, {
+      key: string;
+      cliente_id?: string;
+      cliente_nombre: string;
+      cliente_telefono: string;
+      services: Service[];
+      totalValor: number;
+      minDiff: number;
+      earliestDate: string;
+      primaryStatus: Service['estado'];
+    }>();
+
+    for (const s of listaPendientes) {
+      const cleanPhone = (s.cliente_telefono || '').replace(/\D/g, '');
+      const cleanName = (s.cliente_nombre || '').trim().toLowerCase();
+      const key = s.cliente_id
+        ? `id_${s.cliente_id}`
+        : cleanPhone
+        ? `phone_${cleanPhone}`
+        : `name_${cleanName}`;
+
+      const sDiff = getDaysDiff(s.fecha_proximo_pago);
+      const existing = groupsMap.get(key);
+
+      if (existing) {
+        existing.services.push(s);
+        existing.totalValor += Number(s.valor) || 0;
+        if (sDiff < existing.minDiff) {
+          existing.minDiff = sDiff;
+          existing.earliestDate = s.fecha_proximo_pago;
+        }
+      } else {
+        groupsMap.set(key, {
+          key,
+          cliente_id: s.cliente_id,
+          cliente_telefono: s.cliente_telefono,
+          cliente_nombre: s.cliente_nombre,
+          services: [s],
+          totalValor: Number(s.valor) || 0,
+          minDiff: sDiff,
+          earliestDate: s.fecha_proximo_pago,
+          primaryStatus: s.estado,
+        });
+      }
+    }
+
+    return Array.from(groupsMap.values());
+  }, [listaPendientes]);
+
   return (
     <div className="space-y-6 pb-24 md:pb-8">
       {/* Alerta de Cancelaciones Pendientes (36 Horas) */}
@@ -98,53 +151,49 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* Tarjetas Financieras Principales */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {/* Ingresos Clientes */}
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-400">Ingresos Clientes</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-950/80 text-emerald-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
+        {/* Total Ingresos */}
+        <div className="p-4 bg-slate-900/80 border border-slate-800/80 rounded-3xl flex items-center gap-3.5 shadow-sm">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-950/80 border border-emerald-800/40 flex items-center justify-center text-emerald-400 shrink-0">
+            <DollarSign className="w-5 h-5" />
           </div>
-          <p className="text-lg md:text-xl font-bold text-white tracking-tight">{formatCOP(totalIngresos)}</p>
-          <p className="text-[10px] text-slate-400 mt-1">{metrics.serviciosActivos || metrics.totalServices || 0} servicios activos</p>
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Ingresos Esperados</p>
+            <h4 className="text-base font-bold text-white tracking-tight">{formatCOP(totalIngresos)}</h4>
+          </div>
         </div>
 
         {/* Costos Plataformas */}
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-400">Costos Plataformas</span>
-            <div className="w-7 h-7 rounded-lg bg-rose-950/80 text-rose-400 flex items-center justify-center">
-              <CreditCard className="w-4 h-4" />
-            </div>
+        <div className="p-4 bg-slate-900/80 border border-slate-800/80 rounded-3xl flex items-center gap-3.5 shadow-sm">
+          <div className="w-10 h-10 rounded-2xl bg-rose-950/80 border border-rose-800/40 flex items-center justify-center text-rose-400 shrink-0">
+            <CreditCard className="w-5 h-5" />
           </div>
-          <p className="text-lg md:text-xl font-bold text-white tracking-tight">{formatCOP(totalCostos)}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Cuentas que tú pagas</p>
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Costo Cuentas</p>
+            <h4 className="text-base font-bold text-white tracking-tight">{formatCOP(totalCostos)}</h4>
+          </div>
         </div>
 
         {/* Ganancia Neta */}
-        <div className="col-span-2 sm:col-span-1 p-4 bg-linear-to-br from-emerald-950/60 to-slate-900 border border-emerald-800/40 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-emerald-300">Ganancia Neta</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
-            </div>
+        <div className="p-4 bg-slate-900/80 border border-slate-800/80 rounded-3xl flex items-center gap-3.5 shadow-sm">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-950/80 border border-indigo-800/40 flex items-center justify-center text-indigo-400 shrink-0">
+            <Wallet className="w-5 h-5" />
           </div>
-          <p className="text-xl md:text-2xl font-black text-emerald-400 tracking-tight">{formatCOP(ganancia)}</p>
-          <p className="text-[10px] text-emerald-400/80 mt-1">Ingresos - Costos</p>
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Ganancia Estimada</p>
+            <h4 className="text-base font-bold text-emerald-400 tracking-tight">{formatCOP(ganancia)}</h4>
+          </div>
         </div>
 
-        {/* Cobros Pendientes (Hoy + Atrasados) */}
-        <div className="col-span-2 sm:col-span-1 p-4 bg-slate-900 border border-slate-800 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-400">Cobros Pendientes</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-950/80 text-amber-400 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
+        {/* Cobros Pendientes (Hoy) */}
+        <div className="p-4 bg-slate-900/80 border border-slate-800/80 rounded-3xl flex flex-col justify-between shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-slate-400">Cobros Hoy y Atrasados</p>
+            <Clock className="w-4 h-4 text-amber-400" />
           </div>
-          <p className="text-lg md:text-xl font-bold text-amber-400 tracking-tight">
-            {pendientesCount} por cobrar
-          </p>
+          <div className="mt-1 flex items-baseline justify-between">
+            <h4 className="text-lg font-bold text-amber-400">{pendientesCount}</h4>
+            <span className="text-[10px] text-slate-500">servicios</span>
+          </div>
           <button
             onClick={() => onNavigate('collections')}
             className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 mt-1 font-medium cursor-pointer"
@@ -187,37 +236,49 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </button>
         </div>
 
-        {listaPendientes.length === 0 ? (
+        {groupedPendientes.length === 0 ? (
           <div className="p-8 bg-slate-900/40 border border-slate-800/60 rounded-3xl text-center">
             <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-80" />
             <p className="text-xs text-slate-300 font-medium">¡Al día! No hay cobros atrasados ni para hoy.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {listaPendientes.slice(0, 8).map((service) => {
-              const diff = getDaysDiff(service.fecha_proximo_pago);
+            {groupedPendientes.slice(0, 8).map((group) => {
+              const hasMultiple = group.services.length > 1;
+              const diff = group.minDiff;
 
               return (
                 <div
-                  key={service.id}
+                  key={group.key}
                   className="p-4 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-3xl flex flex-col justify-between gap-3.5 transition-all shadow-md"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-bold text-white truncate">{service.cliente_nombre}</h4>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-xs font-semibold text-emerald-400">{service.plataforma}</span>
-                        {service.perfil && (
-                          <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md">
-                            Perfil: {service.perfil}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-bold text-white truncate">{group.cliente_nombre}</h4>
+                        {hasMultiple && (
+                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                            {group.services.length} plataformas
                           </span>
                         )}
                       </div>
+
+                      {!hasMultiple && (
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-xs font-semibold text-emerald-400">{group.services[0].plataforma}</span>
+                          {group.services[0].perfil && (
+                            <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md">
+                              Perfil: {group.services[0].perfil}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <div className="mt-2 space-y-0.5 text-xs text-slate-400">
                         <p>
                           Vence:{' '}
                           <span className="font-semibold text-slate-200">
-                            {service.fecha_proximo_pago ? service.fecha_proximo_pago.split('T')[0] : 'N/A'}
+                            {group.earliestDate ? group.earliestDate.split('T')[0] : 'N/A'}
                           </span>
                         </p>
                         {diff < 0 && (
@@ -230,33 +291,68 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             🔔 Vence hoy
                           </p>
                         )}
+                        {diff > 0 && diff <= 5 && (
+                          <p className="text-[11px] text-cyan-400 font-medium">
+                            ⏳ Vence en {diff} día{diff > 1 ? 's' : ''}
+                          </p>
+                        )}
+                        {group.cliente_telefono && (
+                          <p className="text-[11px] text-slate-400">📱 {group.cliente_telefono}</p>
+                        )}
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-white">{formatCOP(service.valor)}</p>
+                      <p className="text-sm font-bold text-white">{formatCOP(group.totalValor)}</p>
                       <div className="mt-1">
-                        <StatusBadge status={service.estado} size="sm" />
+                        <StatusBadge status={group.primaryStatus} size="sm" />
                       </div>
                     </div>
                   </div>
+
+                  {/* Desglose de plataformas si son 2 o más */}
+                  {hasMultiple && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                      {group.services.map((srv) => (
+                        <div
+                          key={srv.id}
+                          className="flex items-center justify-between text-xs py-1 px-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60"
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="font-semibold text-emerald-400">{srv.plataforma}</span>
+                            {srv.perfil && (
+                              <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md truncate">
+                                Perfil: {srv.perfil}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-bold text-white text-xs shrink-0">
+                            {formatCOP(srv.valor)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* LOS 4 BOTONES DE ACCIÓN */}
                   <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {/* Botón 1: WhatsApp (#4ec481) */}
                     <WhatsAppButton
-                      nombre={service.cliente_nombre}
-                      plataforma={service.plataforma}
-                      fecha={service.fecha_proximo_pago}
-                      valor={service.valor}
-                      telefono={service.cliente_telefono}
+                      nombre={group.cliente_nombre}
+                      plataforma={group.services.map((s) => s.plataforma).join(', ')}
+                      fecha={group.earliestDate}
+                      valor={group.totalValor}
+                      telefono={group.cliente_telefono}
+                      clienteId={group.cliente_id}
+                      allServices={services || listaPendientes}
+                      clientServices={group.services}
                       type={diff < 0 ? 'reminder' : 'collection'}
                       className="w-full py-2.5"
                     />
 
                     {/* Botón 2: Recordar 24h (#b996d2) */}
                     <button
-                      onClick={() => onWait24hService && onWait24hService(service)}
+                      onClick={() => onWait24hService && onWait24hService(group.services[0], group.services)}
                       style={{ backgroundColor: '#b996d2' }}
                       className="w-full py-2.5 px-2 text-slate-950 hover:brightness-105 active:brightness-95 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer"
                       title="Cliente confirmó intención de pago, poner en espera 24h"
@@ -266,7 +362,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                     {/* Botón 3: Registrar Pago (#6bb6e8) */}
                     <button
-                      onClick={() => onOpenPaymentModal(service)}
+                      onClick={() => onOpenPaymentModal(group.services[0], group.services)}
                       style={{ backgroundColor: '#6bb6e8' }}
                       className="w-full py-2.5 px-2 text-slate-950 hover:brightness-105 active:brightness-95 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer"
                     >
@@ -275,7 +371,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                     {/* Botón 4: No renueva (#6a0101) */}
                     <button
-                      onClick={() => onCancelService(service)}
+                      onClick={() => onCancelService(group.services[0], group.services)}
                       style={{ backgroundColor: '#6a0101' }}
                       className="w-full py-2.5 px-2 text-white hover:brightness-125 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer"
                     >

@@ -16,8 +16,34 @@ import { useAuth } from '../context/AuthContext';
 interface CollectionsPageProps {
   services: Service[];
   onRefresh: () => void;
-  onOpenPaymentModal: (service: Service) => void;
+  onOpenPaymentModal: (service: Service, servicesGroup?: Service[]) => void;
 }
+
+export interface ClientCollectionGroup {
+  key: string;
+  cliente_id?: string;
+  cliente_nombre: string;
+  cliente_telefono: string;
+  services: Service[];
+  totalValor: number;
+  minDiff: number;
+  earliestDate: string;
+  isCancelAlert: boolean;
+  isPendingPayment: boolean;
+  primaryStatus: Service['estado'];
+}
+
+const STATUS_PRIORITY: Record<string, number> = {
+  CANCELACION_PENDIENTE: 1,
+  VENCIDO: 2,
+  EN_ESPERA: 3,
+  PAGO_PENDIENTE: 4,
+  RECORDATORIO_ENVIADO: 5,
+  RENOVACION_PENDIENTE: 6,
+  POR_VENCER: 7,
+  ACTIVO: 8,
+  CANCELADO: 9,
+};
 
 type TabType = 'TODOS' | 'HOY' | 'POR_VENCER' | 'VENCIDOS' | 'EN_ESPERA' | 'CANCELACION';
 
@@ -64,15 +90,66 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
     }
   };
 
-  const handleWait24h = async (service: Service) => {
-    setActionLoading(service.id);
+  const handleNoRenewGroup = async (servicesList: Service[]) => {
+    if (servicesList.length === 1) {
+      return handleNoRenew(servicesList[0]);
+    }
+
+    const clientName = servicesList[0]?.cliente_nombre || 'Cliente';
+    const optionsText = servicesList
+      .map((s, idx) => `${idx + 1}. ${s.plataforma} (${formatCOP(s.valor)})`)
+      .join('\n');
+
+    const answer = prompt(
+      `¿Qué servicio no renueva ${clientName}?\n\n0. Cancelar TODOS (${servicesList.length} servicios)\n${optionsText}\n\nEscribe el número correspondiente (o presiona Cancelar):`
+    );
+    if (answer === null) return;
+
+    const choice = answer.trim();
+    let toCancel: Service[] = [];
+    if (choice === '0') {
+      toCancel = servicesList;
+    } else {
+      const idx = parseInt(choice, 10) - 1;
+      if (idx >= 0 && idx < servicesList.length) {
+        toCancel = [servicesList[idx]];
+      } else {
+        alert('Opción no válida');
+        return;
+      }
+    }
+
+    const motivo = prompt(`Motivo por el cual no renueva (Opcional):`);
+    if (motivo === null) return;
+
+    const actionKey = servicesList.map((s) => s.id).join('_');
+    setActionLoading(actionKey);
+    try {
+      for (const s of toCancel) {
+        await api.noRenewService(s.id, motivo, user?.nombre || 'Carlos');
+      }
+      onRefresh();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleWait24hGroup = async (servicesList: Service[]) => {
+    const actionKey = servicesList.map((s) => s.id).join('_');
+    setActionLoading(actionKey);
     try {
       if (user?.email === 'demo@appcobros.com') {
-        service.estado = 'EN_ESPERA';
+        servicesList.forEach((s) => {
+          s.estado = 'EN_ESPERA';
+        });
         onRefresh();
         return;
       }
-      await api.wait24hService(service.id, user?.nombre || 'Carlos');
+      for (const s of servicesList) {
+        await api.wait24hService(s.id, user?.nombre || 'Carlos');
+      }
       onRefresh();
     } catch (e: any) {
       alert('Error al poner en espera: ' + e.message);
@@ -120,6 +197,57 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
       }
     }).sort((a, b) => (a.fecha_proximo_pago || '').localeCompare(b.fecha_proximo_pago || ''));
   }, [services, currentTab, searchTerm]);
+
+  // Agrupación de cobros por Cliente
+  const groupedCollections = useMemo(() => {
+    const groupsMap = new Map<string, ClientCollectionGroup>();
+
+    for (const s of filteredServices) {
+      const cleanPhone = (s.cliente_telefono || '').replace(/\D/g, '');
+      const cleanName = (s.cliente_nombre || '').trim().toLowerCase();
+      const key = s.cliente_id
+        ? `id_${s.cliente_id}`
+        : cleanPhone
+        ? `phone_${cleanPhone}`
+        : `name_${cleanName}`;
+
+      const sDiff = getDaysDiff(s.fecha_proximo_pago);
+      const existing = groupsMap.get(key);
+
+      if (existing) {
+        existing.services.push(s);
+        existing.totalValor += Number(s.valor) || 0;
+        if (sDiff < existing.minDiff) {
+          existing.minDiff = sDiff;
+          existing.earliestDate = s.fecha_proximo_pago;
+        }
+        if (s.estado === 'CANCELACION_PENDIENTE') existing.isCancelAlert = true;
+        if (s.estado === 'PAGO_PENDIENTE' || s.estado === 'EN_ESPERA') existing.isPendingPayment = true;
+
+        const currentPrio = STATUS_PRIORITY[existing.primaryStatus] ?? 99;
+        const newPrio = STATUS_PRIORITY[s.estado] ?? 99;
+        if (newPrio < currentPrio) {
+          existing.primaryStatus = s.estado;
+        }
+      } else {
+        groupsMap.set(key, {
+          key,
+          cliente_id: s.cliente_id,
+          cliente_nombre: s.cliente_nombre,
+          cliente_telefono: s.cliente_telefono,
+          services: [s],
+          totalValor: Number(s.valor) || 0,
+          minDiff: sDiff,
+          earliestDate: s.fecha_proximo_pago,
+          isCancelAlert: s.estado === 'CANCELACION_PENDIENTE',
+          isPendingPayment: s.estado === 'PAGO_PENDIENTE' || s.estado === 'EN_ESPERA',
+          primaryStatus: s.estado,
+        });
+      }
+    }
+
+    return Array.from(groupsMap.values());
+  }, [filteredServices]);
 
   return (
     <div className="space-y-5 pb-24 md:pb-8">
@@ -173,24 +301,29 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
 
       {/* Contador de resultados */}
       <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-        <span>Mostrando {filteredServices.length} servicios</span>
+        <span>
+          Mostrando {groupedCollections.length} cliente{groupedCollections.length !== 1 ? 's' : ''} ({filteredServices.length} servicio{filteredServices.length !== 1 ? 's' : ''})
+        </span>
       </div>
 
-      {/* Lista de Tarjetas de Cobro */}
+      {/* Lista de Tarjetas de Cobro Agrupadas por Cliente */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        {filteredServices.length === 0 ? (
+        {groupedCollections.length === 0 ? (
           <div className="col-span-full py-12 text-center text-slate-500 bg-slate-900/50 border border-slate-800/80 rounded-3xl">
             <p className="text-sm font-medium">No hay cobros en esta pestaña.</p>
           </div>
         ) : (
-          filteredServices.map((service) => {
-            const diff = getDaysDiff(service.fecha_proximo_pago);
-            const isCancelAlert = service.estado === 'CANCELACION_PENDIENTE';
-            const isPendingPayment = service.estado === 'PAGO_PENDIENTE' || service.estado === 'EN_ESPERA';
+          groupedCollections.map((group) => {
+            const hasMultiple = group.services.length > 1;
+            const diff = group.minDiff;
+            const isCancelAlert = group.isCancelAlert;
+            const isPendingPayment = group.isPendingPayment;
+            const actionKey = group.services.map((s) => s.id).join('_');
+            const isLoading = group.services.some((s) => actionLoading === s.id) || actionLoading === actionKey;
 
             return (
               <div
-                key={service.id}
+                key={group.key}
                 className={`p-4 bg-slate-900 border rounded-3xl flex flex-col justify-between gap-3.5 transition-all shadow-md ${
                   isCancelAlert
                     ? 'border-red-700/80 bg-red-950/20 shadow-red-950/20'
@@ -202,21 +335,31 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
                 {/* Encabezado de la Tarjeta */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-bold text-white truncate">{service.cliente_nombre}</h4>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className="text-xs font-semibold text-emerald-400">{service.plataforma}</span>
-                      {service.perfil && (
-                        <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md">
-                          Perfil: {service.perfil}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-white truncate">{group.cliente_nombre}</h4>
+                      {hasMultiple && (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                          {group.services.length} plataformas
                         </span>
                       )}
                     </div>
+
+                    {!hasMultiple && (
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-xs font-semibold text-emerald-400">{group.services[0].plataforma}</span>
+                        {group.services[0].perfil && (
+                          <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md">
+                            Perfil: {group.services[0].perfil}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     <div className="mt-2 space-y-0.5 text-xs text-slate-400">
                       <p>
                         Vence:{' '}
                         <span className="font-semibold text-slate-200">
-                          {service.fecha_proximo_pago ? service.fecha_proximo_pago.split('T')[0] : 'N/A'}
+                          {group.earliestDate ? group.earliestDate.split('T')[0] : 'N/A'}
                         </span>
                       </p>
                       {diff < 0 && (
@@ -234,8 +377,8 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
                           ⏳ Vence en {diff} día{diff > 1 ? 's' : ''}
                         </p>
                       )}
-                      {service.cliente_telefono ? (
-                        <p className="text-[11px] text-slate-400">📱 {service.cliente_telefono}</p>
+                      {group.cliente_telefono ? (
+                        <p className="text-[11px] text-slate-400">📱 {group.cliente_telefono}</p>
                       ) : (
                         <p className="text-[11px] text-amber-400 font-medium">⚠️ Sin teléfono asignado</p>
                       )}
@@ -243,12 +386,36 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-white">{formatCOP(service.valor)}</p>
+                    <p className="text-sm font-bold text-white">{formatCOP(group.totalValor)}</p>
                     <div className="mt-1">
-                      <StatusBadge status={service.estado} size="sm" />
+                      <StatusBadge status={group.primaryStatus} size="sm" />
                     </div>
                   </div>
                 </div>
+
+                {/* Desglose de plataformas si son 2 o más */}
+                {hasMultiple && (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                    {group.services.map((srv) => (
+                      <div
+                        key={srv.id}
+                        className="flex items-center justify-between text-xs py-1 px-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60"
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-semibold text-emerald-400">{srv.plataforma}</span>
+                          {srv.perfil && (
+                            <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded-md truncate">
+                              Perfil: {srv.perfil}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-bold text-white text-xs shrink-0">
+                          {formatCOP(srv.valor)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Avisos especiales */}
                 {isCancelAlert && (
@@ -269,19 +436,21 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
                 <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {/* Botón 1: WhatsApp (#4ec481) */}
                   <WhatsAppButton
-                    nombre={service.cliente_nombre}
-                    plataforma={service.plataforma}
-                    fecha={service.fecha_proximo_pago}
-                    valor={service.valor}
-                    telefono={service.cliente_telefono}
+                    nombre={group.cliente_nombre}
+                    plataforma={group.services.map((s) => s.plataforma).join(', ')}
+                    fecha={group.earliestDate}
+                    valor={group.totalValor}
+                    telefono={group.cliente_telefono}
+                    clienteId={group.cliente_id}
+                    clientServices={group.services}
                     type={diff < 0 ? 'reminder' : 'collection'}
                     className="w-full py-2.5"
                   />
 
                   {/* Botón 2: Recordar 24h (#b996d2) */}
                   <button
-                    onClick={() => handleWait24h(service)}
-                    disabled={actionLoading === service.id}
+                    onClick={() => handleWait24hGroup(group.services)}
+                    disabled={isLoading}
                     style={{ backgroundColor: '#b996d2' }}
                     className="w-full py-2.5 px-2 text-slate-950 hover:brightness-105 active:brightness-95 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer disabled:opacity-50"
                     title="Cliente confirmó intención de pago, poner en espera 24h"
@@ -291,7 +460,7 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
 
                   {/* Botón 3: Registrar Pago (#6bb6e8) */}
                   <button
-                    onClick={() => onOpenPaymentModal(service)}
+                    onClick={() => onOpenPaymentModal(group.services[0], group.services)}
                     style={{ backgroundColor: '#6bb6e8' }}
                     className="w-full py-2.5 px-2 text-slate-950 hover:brightness-105 active:brightness-95 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer"
                   >
@@ -300,10 +469,10 @@ export const CollectionsPage: React.FC<CollectionsPageProps> = ({
 
                   {/* Botón 4: No renueva (#6a0101) */}
                   <button
-                    onClick={() => handleNoRenew(service)}
-                    disabled={actionLoading === service.id}
+                    onClick={() => handleNoRenewGroup(group.services)}
+                    disabled={isLoading}
                     style={{ backgroundColor: '#6a0101' }}
-                    className="w-full py-2.5 px-2 text-white hover:brightness-125 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer"
+                    className="w-full py-2.5 px-2 text-white hover:brightness-125 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer disabled:opacity-50"
                   >
                     <UserX className="w-3.5 h-3.5" /> No renueva
                   </button>

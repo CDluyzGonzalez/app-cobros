@@ -1,9 +1,51 @@
+export interface ServiceItemSummary {
+  plataforma: string;
+  valor?: number;
+  estado?: string;
+}
+
 export interface WhatsAppMessageParams {
   nombre: string;
-  plataforma: string;
-  fecha: string;
-  valor: number;
-  telefono: string;
+  plataforma?: string;
+  fecha?: string;
+  valor?: number;
+  telefono?: string;
+  servicios?: ServiceItemSummary[];
+}
+
+/**
+ * Formatea una lista de plataformas para el mensaje:
+ * - 1 plataforma: "DISNEY+"
+ * - 2 plataformas: "DISNEY+ y DGO"
+ * - 3+ plataformas: "DISNEY+, DGO y NETFLIX"
+ * - Repetidas: "NETFLIX (2)"
+ */
+export function formatPlatformsList(platforms: string[]): string {
+  const validPlatforms = (platforms || []).map((p) => (p || '').trim()).filter(Boolean);
+  if (validPlatforms.length === 0) return 'SERVICIO';
+
+  const counts = new Map<string, number>();
+  validPlatforms.forEach((p) => {
+    const upper = p.toUpperCase();
+    counts.set(upper, (counts.get(upper) || 0) + 1);
+  });
+
+  const formattedItems: string[] = [];
+  counts.forEach((count, name) => {
+    if (count > 1) {
+      formattedItems.push(`${name} (${count})`);
+    } else {
+      formattedItems.push(name);
+    }
+  });
+
+  if (formattedItems.length === 1) {
+    return formattedItems[0];
+  }
+  if (formattedItems.length === 2) {
+    return `${formattedItems[0]} y ${formattedItems[1]}`;
+  }
+  return `${formattedItems.slice(0, -1).join(', ')} y ${formattedItems[formattedItems.length - 1]}`;
 }
 
 /**
@@ -34,12 +76,12 @@ function formatExpirationDay(dateStr?: string): string {
  * Mensaje de cobro formal solicitado:
  * Hola {nombre}
  * 
- * Te escribo porque tu servicio de *{PLATAFORMA}* vence el día *{hoy/fecha}*.
+ * Te escribo porque tu servicio de *{PLATAFORMAS}* vence el día *{hoy/fecha}*.
  * 
- * El valor de la renovación es de *{valor}*.
+ * El valor de la renovación es de *{valor_total}*.
  * ¿Deseas renovar?
  * 
- * Puedes realizar el pago y enviarme el comprobante por este medio.
+ * Puedes realizar el pago por llave bre-b: @cdg264 y enviarme el comprobante por este medio.
  * 
  * ¡Gracias!
  */
@@ -48,23 +90,34 @@ export function generateCollectionMessage({
   plataforma,
   fecha,
   valor,
+  servicios,
 }: WhatsAppMessageParams): string {
+  let platStr = (plataforma || 'Servicio').toUpperCase().trim();
+  let finalVal = valor || 0;
+
+  if (servicios && servicios.length > 0) {
+    const activeList = servicios.filter((s) => s.estado !== 'CANCELADO');
+    if (activeList.length > 0) {
+      platStr = formatPlatformsList(activeList.map((s) => s.plataforma));
+      finalVal = activeList.reduce((sum, s) => sum + (Number(s.valor) || 0), 0);
+    }
+  }
+
   const formattedVal = new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
     maximumFractionDigits: 0,
-  }).format(valor || 0);
+  }).format(finalVal);
 
   const cleanName = (nombre || 'Cliente').trim();
-  const plat = (plataforma || 'Servicio').toUpperCase().trim();
   const expDay = formatExpirationDay(fecha);
 
   return (
-    `Hola ${cleanName} \n\n` +
-    `Te escribo porque tu servicio de *${plat}* vence el día *${expDay}*.\n\n` +
+    `Hola ${cleanName}\n\n` +
+    `Te escribo porque tu servicio de *${platStr}* vence el día *${expDay}*.\n\n` +
     `El valor de la renovación es de *${formattedVal}*.\n` +
     `¿Deseas renovar?\n\n` +
-    `Puedes realizar el pago y enviarme el comprobante por este medio.\n\n` +
+    `Puedes realizar el pago por llave bre-b: @cdg264 y enviarme el comprobante por este medio.\n\n` +
     `¡Gracias!`
   );
 }
@@ -76,20 +129,31 @@ export function generateReminderMessage({
   nombre,
   plataforma,
   valor,
+  servicios,
 }: WhatsAppMessageParams): string {
+  let platStr = (plataforma || 'Servicio').toUpperCase().trim();
+  let finalVal = valor || 0;
+
+  if (servicios && servicios.length > 0) {
+    const activeList = servicios.filter((s) => s.estado !== 'CANCELADO');
+    if (activeList.length > 0) {
+      platStr = formatPlatformsList(activeList.map((s) => s.plataforma));
+      finalVal = activeList.reduce((sum, s) => sum + (Number(s.valor) || 0), 0);
+    }
+  }
+
   const formattedVal = new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
     maximumFractionDigits: 0,
-  }).format(valor || 0);
+  }).format(finalVal);
 
   const cleanName = (nombre || 'Cliente').trim();
-  const plat = (plataforma || 'Servicio').toUpperCase().trim();
 
   return (
-    `Hola ${cleanName} \n\n` +
-    `Te recuerdo que tenemos pendiente el pago de la renovación de tu servicio de *${plat}* (*${formattedVal}*).\n\n` +
-    `Por favor envíame el comprobante para poder confirmar y así continuar con el servicio.\n\n` +
+    `Hola ${cleanName}\n\n` +
+    `Te recuerdo que tenemos pendiente el pago de la renovación de tu servicio de *${platStr}* (*${formattedVal}*).\n\n` +
+    `Puedes realizar el pago por llave bre-b: @cdg264 y enviarme el comprobante por este medio para poder confirmar y así continuar con el servicio.\n\n` +
     `¡Gracias!`
   );
 }

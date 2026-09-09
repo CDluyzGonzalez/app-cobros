@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 
 interface PaymentModalProps {
   service: Service;
+  servicesGroup?: Service[];
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (nextDate: string) => void;
@@ -13,16 +14,46 @@ interface PaymentModalProps {
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
   service,
+  servicesGroup,
   isOpen,
   onClose,
   onSuccess,
 }) => {
   const { user } = useAuth();
-  const [valor, setValor] = useState(service.valor.toString());
+  const effectiveServices = servicesGroup && servicesGroup.length > 0 ? servicesGroup : [service];
+
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    effectiveServices.map((s) => s.id)
+  );
+
+  const initialTotal = effectiveServices.reduce((sum, s) => sum + (Number(s.valor) || 0), 0);
+  const [valor, setValor] = useState(initialTotal.toString());
   const [metodo, setMetodo] = useState('Transferencia (Bancolombia / Nequi)');
   const [comprobante, setComprobante] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Sincronizar selección si cambia el servicio o grupo
+  React.useEffect(() => {
+    const total = effectiveServices.reduce((sum, s) => sum + (Number(s.valor) || 0), 0);
+    setSelectedServiceIds(effectiveServices.map((s) => s.id));
+    setValor(total.toString());
+  }, [service.id, servicesGroup?.length]);
+
+  const handleToggleService = (srvId: string) => {
+    setSelectedServiceIds((prev) => {
+      const next = prev.includes(srvId)
+        ? prev.filter((id) => id !== srvId)
+        : [...prev, srvId];
+
+      const newSum = effectiveServices
+        .filter((s) => next.includes(s.id))
+        .reduce((sum, s) => sum + (Number(s.valor) || 0), 0);
+
+      setValor(newSum.toString());
+      return next;
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -37,18 +68,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setLoading(true);
     setError('');
 
-    try {
-      const res = await api.registerPayment(
-        {
-          servicio_id: service.id,
-          valor: Number(valor),
-          metodo_pago: metodo,
-          comprobante_ref: comprobante,
-        },
-        user || undefined
-      );
+    const targetServices = effectiveServices.filter((s) => selectedServiceIds.includes(s.id));
+    if (targetServices.length === 0) {
+      setError('Debes seleccionar al menos un servicio para registrar el pago.');
+      setLoading(false);
+      return;
+    }
 
-      onSuccess(res.fecha_proximo_pago);
+    try {
+      let lastDate = '';
+      for (const srv of targetServices) {
+        const res = await api.registerPayment(
+          {
+            servicio_id: srv.id,
+            valor: targetServices.length === 1 ? Number(valor) : srv.valor,
+            metodo_pago: metodo,
+            comprobante_ref: comprobante,
+          },
+          user || undefined
+        );
+        lastDate = res.fecha_proximo_pago;
+      }
+
+      onSuccess(lastDate);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error registrando el pago');
@@ -73,9 +115,57 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
           <div>
             <h3 className="text-base font-semibold text-white">Registrar Pago</h3>
-            <p className="text-xs text-slate-400">{service.cliente_nombre} • {service.plataforma}</p>
+            <p className="text-xs text-slate-400">
+              {service.cliente_nombre} •{' '}
+              {effectiveServices.length > 1
+                ? `${effectiveServices.length} plataformas activas`
+                : service.plataforma}
+            </p>
           </div>
         </div>
+
+        {/* Lista de selección de plataformas si son múltiples */}
+        {effectiveServices.length > 1 && (
+          <div className="mb-4 space-y-1.5">
+            <label className="block text-xs font-medium text-slate-300">
+              Plataformas a renovar ({selectedServiceIds.length} de {effectiveServices.length}):
+            </label>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {effectiveServices.map((srv) => {
+                const checked = selectedServiceIds.includes(srv.id);
+                return (
+                  <div
+                    key={srv.id}
+                    onClick={() => handleToggleService(srv.id)}
+                    className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                      checked
+                        ? 'bg-emerald-950/40 border-emerald-800/80 text-white'
+                        : 'bg-slate-950/40 border-slate-800 text-slate-400 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {}}
+                        className="rounded border-slate-700 text-emerald-600 focus:ring-0"
+                      />
+                      <span className="font-semibold">{srv.plataforma}</span>
+                      {srv.perfil && (
+                        <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+                          Perfil: {srv.perfil}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-bold text-emerald-400">
+                      ${srv.valor?.toLocaleString('es-CO')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Regla fija de 30 días destacada */}
         <div className="mb-4 p-3 bg-slate-950/70 border border-slate-800 rounded-xl">

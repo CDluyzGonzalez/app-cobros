@@ -21,6 +21,14 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn('⚠️ VAPID keys no configuradas en variables de entorno.');
 }
 
+function isExpiredOrMismatch(err: any): boolean {
+  if (!err) return false;
+  if (err.statusCode === 410 || err.statusCode === 404) return true;
+  const bodyStr = typeof err.body === 'string' ? err.body : JSON.stringify(err.body || '');
+  if (err.statusCode === 400 && bodyStr.includes('VapidPkHashMismatch')) return true;
+  return false;
+}
+
 /**
  * GET /api/notifications/vapid-public-key
  * Retorna la llave pública VAPID para que el navegador/iPhone se suscriba
@@ -73,18 +81,16 @@ notificationsRouter.post('/test', async (req: Request, res: Response) => {
 
     let query: FirebaseFirestore.Query = db.collection('push_subscriptions');
     if (userId) {
-      // Si se especifica userId, intentar buscar de ese usuario
-      const userSubs = await query.where('userId', '==', userId).get();
-      if (!userSubs.empty) {
-        query = query.where('userId', '==', userId);
-      }
+      query = query.where('userId', '==', userId);
     }
 
     const snap = await query.get();
     if (snap.empty) {
       return res.status(400).json({
         success: false,
-        message: 'No hay dispositivos suscritos. Pulsa "Activar Alertas" en tu celular primero.',
+        message: userId
+          ? 'No hay dispositivos suscritos para tu cuenta. Pulsa "Activar Alertas" en tu celular primero.'
+          : 'No hay dispositivos suscritos. Pulsa "Activar Alertas" en tu celular primero.',
       });
     }
 
@@ -103,11 +109,11 @@ notificationsRouter.post('/test', async (req: Request, res: Response) => {
         await webpush.sendNotification(sub, payload);
         successCount++;
       } catch (err: any) {
-        // Si el endpoint caducó (410 o 404), limpiar de Firestore
-        if (err.statusCode === 410 || err.statusCode === 404) {
+        if (isExpiredOrMismatch(err)) {
+          console.warn('🗑️ Eliminando suscripción push caducada o con llave VAPID previa:', doc.id);
           await doc.ref.delete();
         } else {
-          console.error('Error enviando push a dispositivo:', err.message);
+          console.error('Error enviando push a dispositivo:', err.statusCode, err.body || err.message);
         }
       }
     });
@@ -127,7 +133,7 @@ notificationsRouter.post('/test', async (req: Request, res: Response) => {
 
 /**
  * POST /api/notifications/send-daily
- * Consulta cobros pendientes hoy + atrasados y envía push notification remota a todos los dispositivos
+ * Consulta cobros pendientes hoy + atrasados y envía push notification POR USUARIO a sus dispositivos
  */
 notificationsRouter.post('/send-daily', async (_req: Request, res: Response) => {
   try {
@@ -146,14 +152,10 @@ notificationsRouter.post('/send-daily', async (_req: Request, res: Response) => 
       maximumFractionDigits: 0,
     }).format(valorTotal);
 
-    const snap = await db.collection('push_subscriptions').get();
-    if (snap.empty) {
-      return res.json({
-        success: true,
-        message: 'No hay dispositivos suscritos en la nube.',
-        totalPendientes,
-        valorTotal,
-      });
+    // Obtener todos los usuarios para enviar a cada uno sus dispositivos
+    const usersSnap = await db.collection('usuarios').get();
+    if (usersSnap.empty) {
+      return res.json({ success: true, message: 'No hay usuarios registrados.', totalPendientes, valorTotal });
     }
 
     const payload = JSON.stringify({
@@ -164,27 +166,33 @@ notificationsRouter.post('/send-daily', async (_req: Request, res: Response) => 
       data: { url: 'https://app-cobros-v2.web.app' },
     });
 
-    let successCount = 0;
-    const promises = snap.docs.map(async (doc) => {
-      const sub = doc.data() as webpush.PushSubscription;
-      try {
-        await webpush.sendNotification(sub, payload);
-        successCount++;
-      } catch (err: any) {
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          await doc.ref.delete();
-        }
-      }
-    });
+    let totalSuccess = 0;
 
-    await Promise.all(promises);
+    for (const userDoc of usersSnap.docs) {
+      const subsSnap = await db.collection('push_subscriptions').where('userId', '==', userDoc.id).get();
+      if (subsSnap.empty) continue;
+
+      const promises = subsSnap.docs.map(async (subDoc) => {
+        const sub = subDoc.data() as webpush.PushSubscription;
+        try {
+          await webpush.sendNotification(sub, payload);
+          totalSuccess++;
+        } catch (err: any) {
+          if (isExpiredOrMismatch(err)) {
+            await subDoc.ref.delete();
+          }
+        }
+      });
+
+      await Promise.all(promises);
+    }
 
     res.json({
       success: true,
-      message: `Notificaciones diarias enviadas a ${successCount} dispositivo(s).`,
+      message: `Notificaciones diarias enviadas a ${totalSuccess} dispositivo(s).`,
       totalPendientes,
       valorTotal,
-      successCount,
+      successCount: totalSuccess,
     });
   } catch (error: any) {
     console.error('Error enviando notificaciones diarias:', error);
@@ -194,9 +202,9 @@ notificationsRouter.post('/send-daily', async (_req: Request, res: Response) => 
 
 /**
  * POST /api/notifications/cron-check
- * Llamado por Google Cloud Scheduler cada 30 minutos.
- * Verifica la hora preferida de cada usuario y solo envía si coincide con la hora actual (Colombia UTC-5).
- * Evita duplicados usando un documento de control diario en Firestore.
+ * Llamado por Google Cloud Scheduler cada hora.
+ * Itera POR USUARIO: verifica hora preferida, envía solo a los dispositivos de ese usuario,
+ * y usa un log de control POR USUARIO POR DÍA para evitar duplicados sin bloquear a otros usuarios.
  */
 notificationsRouter.post('/cron-check', async (_req: Request, res: Response) => {
   try {
@@ -208,54 +216,59 @@ notificationsRouter.post('/cron-check', async (_req: Request, res: Response) => 
 
     console.log(`[cron-check] Hora Colombia: ${currentHour}:${currentMinute.toString().padStart(2, '0')} | Fecha: ${todayKey}`);
 
-    // Verificar si ya enviamos hoy
-    const controlDoc = await db.collection('notification_log').doc(todayKey).get();
-    if (controlDoc.exists && controlDoc.data()?.sent === true) {
-      return res.json({ success: true, message: `Ya se enviaron las notificaciones de hoy (${todayKey}). Sin duplicados.`, skipped: true });
+    // Obtener todos los usuarios
+    const usersSnap = await db.collection('usuarios').get();
+    if (usersSnap.empty) {
+      return res.json({ success: true, message: 'No hay usuarios registrados.', skipped: true });
     }
 
-    // Obtener la hora preferida de los usuarios
-    const usersSnap = await db.collection('usuarios').get();
-    let shouldSend = false;
+    // Identificar qué usuarios deben recibir notificación en esta hora
+    const usersToNotify: { id: string; nombre: string }[] = [];
 
-    usersSnap.forEach(doc => {
-      const data = doc.data();
+    for (const userDoc of usersSnap.docs) {
+      const data = userDoc.data();
       const horaPreferida = data.hora_notificacion || '07:00';
       const [prefHour] = horaPreferida.split(':');
-      // Enviar si la hora actual coincide con la preferida (ej: si prefiere 07:xx y el cron corre a las 07:00)
-      if (prefHour === currentHour) {
-        shouldSend = true;
-      }
-    });
 
-    if (!shouldSend) {
+      if (prefHour !== currentHour) continue; // No es su hora
+
+      // Verificar log de control POR USUARIO POR DÍA
+      const logKey = `${todayKey}__${userDoc.id}`;
+      const controlDoc = await db.collection('notification_log').doc(logKey).get();
+      if (controlDoc.exists && controlDoc.data()?.sent === true) {
+        console.log(`[cron-check] ⏭️ Usuario ${data.nombre || userDoc.id} ya notificado hoy.`);
+        continue;
+      }
+
+      usersToNotify.push({ id: userDoc.id, nombre: data.nombre || data.email || userDoc.id });
+    }
+
+    if (usersToNotify.length === 0) {
       return res.json({
         success: true,
-        message: `No es hora de enviar. Hora actual: ${currentHour}:${currentMinute.toString().padStart(2, '0')}`,
+        message: `No hay usuarios para notificar a las ${currentHour}:${currentMinute.toString().padStart(2, '0')}.`,
         skipped: true,
       });
     }
 
-    // Es hora de enviar — consultar cobros pendientes
+    // Consultar cobros pendientes (compartidos para todos los usuarios)
     const services = await DatabaseService.getEnrichedServices();
     const cobrosHoy = services.filter(s => s.fecha_proximo_pago === todayKey && s.estado !== 'CANCELADO');
     const cobrosVencidos = services.filter(s => s.fecha_proximo_pago < todayKey && s.estado !== 'CANCELADO');
     const totalPendientes = cobrosHoy.length + cobrosVencidos.length;
 
     if (totalPendientes === 0) {
-      // Marcar como enviado y no molestar
-      await db.collection('notification_log').doc(todayKey).set({ sent: true, totalPendientes: 0, sentAt: new Date().toISOString() });
+      // Marcar todos como enviados (no molestar)
+      for (const u of usersToNotify) {
+        await db.collection('notification_log').doc(`${todayKey}__${u.id}`).set({
+          sent: true, userId: u.id, totalPendientes: 0, sentAt: new Date().toISOString(),
+        });
+      }
       return res.json({ success: true, message: 'Sin cobros pendientes hoy. No se envió notificación.', totalPendientes: 0 });
     }
 
     const valorTotal = [...cobrosHoy, ...cobrosVencidos].reduce((acc, s) => acc + (s.valor || 0), 0);
     const formattedValor = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(valorTotal);
-
-    const snap = await db.collection('push_subscriptions').get();
-    if (snap.empty) {
-      await db.collection('notification_log').doc(todayKey).set({ sent: true, totalPendientes, noDevices: true, sentAt: new Date().toISOString() });
-      return res.json({ success: true, message: 'No hay dispositivos suscritos.', totalPendientes });
-    }
 
     const payload = JSON.stringify({
       title: `📋 ${totalPendientes} Cobro${totalPendientes !== 1 ? 's' : ''} Pendiente${totalPendientes !== 1 ? 's' : ''} (${formattedValor})`,
@@ -265,37 +278,61 @@ notificationsRouter.post('/cron-check', async (_req: Request, res: Response) => 
       data: { url: 'https://app-cobros-v2.web.app' },
     });
 
-    let successCount = 0;
-    const promises = snap.docs.map(async (doc) => {
-      const sub = doc.data() as webpush.PushSubscription;
-      try {
-        await webpush.sendNotification(sub, payload);
-        successCount++;
-      } catch (err: any) {
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          await doc.ref.delete();
-        }
+    // Enviar POR USUARIO — solo a los dispositivos de cada usuario
+    let totalSuccess = 0;
+    const userResults: string[] = [];
+
+    for (const u of usersToNotify) {
+      const subsSnap = await db.collection('push_subscriptions').where('userId', '==', u.id).get();
+
+      if (subsSnap.empty) {
+        console.log(`[cron-check] ⚠️ Usuario ${u.nombre} no tiene dispositivos suscritos.`);
+        // Marcar como enviado para no reintentar en la siguiente hora
+        await db.collection('notification_log').doc(`${todayKey}__${u.id}`).set({
+          sent: true, userId: u.id, totalPendientes, noDevices: true, sentAt: new Date().toISOString(),
+        });
+        userResults.push(`${u.nombre}: 0 dispositivos`);
+        continue;
       }
-    });
 
-    await Promise.all(promises);
+      let userSuccess = 0;
+      const promises = subsSnap.docs.map(async (subDoc) => {
+        const sub = subDoc.data() as webpush.PushSubscription;
+        try {
+          await webpush.sendNotification(sub, payload);
+          userSuccess++;
+        } catch (err: any) {
+          if (isExpiredOrMismatch(err)) {
+            await subDoc.ref.delete();
+          }
+        }
+      });
 
-    // Marcar como enviado para no repetir hoy
-    await db.collection('notification_log').doc(todayKey).set({
-      sent: true,
-      totalPendientes,
-      valorTotal,
-      successCount,
-      sentAt: new Date().toISOString(),
-    });
+      await Promise.all(promises);
+      totalSuccess += userSuccess;
 
-    console.log(`[cron-check] ✅ Notificaciones enviadas a ${successCount} dispositivo(s). Total pendientes: ${totalPendientes}`);
+      // Marcar log de control POR USUARIO
+      await db.collection('notification_log').doc(`${todayKey}__${u.id}`).set({
+        sent: true,
+        userId: u.id,
+        totalPendientes,
+        valorTotal,
+        successCount: userSuccess,
+        sentAt: new Date().toISOString(),
+      });
+
+      userResults.push(`${u.nombre}: ${userSuccess} dispositivo(s)`);
+      console.log(`[cron-check] ✅ ${u.nombre} → ${userSuccess} dispositivo(s)`);
+    }
+
+    console.log(`[cron-check] ✅ Total: ${totalSuccess} dispositivo(s) notificados. Pendientes: ${totalPendientes}`);
 
     res.json({
       success: true,
-      message: `Alerta diaria enviada a ${successCount} dispositivo(s). ${totalPendientes} cobros pendientes (${formattedValor}).`,
+      message: `Alerta diaria enviada: ${userResults.join(' | ')}. ${totalPendientes} cobros pendientes (${formattedValor}).`,
       totalPendientes,
-      successCount,
+      totalSuccess,
+      userResults,
     });
   } catch (error: any) {
     console.error('[cron-check] Error:', error);

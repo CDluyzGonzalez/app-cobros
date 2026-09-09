@@ -74,13 +74,21 @@ function urlBase64ToUint8Array(base64String: string) {
       const reg = await navigator.serviceWorker.ready;
 
       // 3. Suscribir el dispositivo al servicio push oficial de Apple / Google
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
+      // Si ya existía una suscripción previa en el dispositivo, forzar renovación
+      // para asegurar que use la llave VAPID actual del servidor (evita VapidPkHashMismatch)
+      const existingSub = await reg.pushManager.getSubscription();
+      if (existingSub) {
+        try {
+          await existingSub.unsubscribe();
+        } catch (e) {
+          console.warn('Error desuscribiendo token previo:', e);
+        }
       }
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
 
       // 4. Guardar la suscripción en Firestore a través de la API
       await api.subscribePush(sub.toJSON(), user?.id);
