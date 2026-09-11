@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Users, Plus, Search, Layers, DollarSign, Calendar, Edit2, Shield, Key, Trash2 } from 'lucide-react';
 import { Account, Client, Service } from '../types';
 import { StatusBadge } from '../components/common/StatusBadge';
@@ -19,6 +19,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [isCustomPlatform, setIsCustomPlatform] = useState(false);
 
   // Form states
   const [clientForm, setClientForm] = useState({ id: '', nombre: '', telefono: '', correo: '', notas: '' });
@@ -29,7 +30,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     perfil: '',
     pin: '',
     valor: '25000',
-    fecha_proximo_pago: '2026-09-03',
+    fecha_proximo_pago: new Date().toISOString().split('T')[0],
     cuenta_id: '',
     correo_cuenta: '',
     notas: '',
@@ -40,21 +41,106 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     const b = (platB || '').toLowerCase().trim();
     if (!a || !b) return false;
     if (a === b) return true;
+
+    // Comparación limpia eliminando caracteres no alfanuméricos (ej: "disney+" y "disney", "paramount+" y "paramount")
+    const cleanA = a.replace(/[^a-z0-9]/g, '');
+    const cleanB = b.replace(/[^a-z0-9]/g, '');
+    if (cleanA && cleanB && cleanA === cleanB) return true;
+
     if (a.includes('netflix') && b.includes('netflix')) return true;
     if (a.includes('disney') && b.includes('disney')) return true;
-    if (a.includes('prime') && b.includes('prime')) return true;
-    if (a.includes('max') && b.includes('max')) return true;
+    if ((a.includes('prime') || a.includes('amazon')) && (b.includes('prime') || b.includes('amazon'))) return true;
+    if ((a.includes('max') || a.includes('hbo')) && (b.includes('max') || b.includes('hbo'))) return true;
     if (a.includes('spotify') && b.includes('spotify')) return true;
     if (a.includes('apple') && b.includes('apple')) return true;
     if (a.includes('canva') && b.includes('canva')) return true;
-    if (a.includes('directv') && b.includes('directv')) return true;
+    if ((a.includes('directv') || a.includes('dgo')) && (b.includes('directv') || b.includes('dgo'))) return true;
+    if (a.includes('paramount') && b.includes('paramount')) return true;
+    if (a.includes('youtube') && b.includes('youtube')) return true;
+    if (a.includes('crunchyroll') && b.includes('crunchyroll')) return true;
+
+    // Comparación por contención de subcadenas si tienen longitud razonable
+    if (cleanA.length >= 4 && cleanB.length >= 4) {
+      if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+    }
+
     return false;
   };
 
+  // Lista dinámica de plataformas combinando cuentas registradas, servicios y valores por defecto
+  const availablePlatforms = useMemo(() => {
+    const map = new Map<string, string>();
+
+    const addPlat = (plat?: string) => {
+      if (!plat) return;
+      const trimmed = plat.trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, trimmed);
+      }
+    };
+
+    // 1. Cuentas creadas (para que cualquier plataforma nueva como Paramount salga de inmediato)
+    accounts.forEach((acc) => addPlat(acc.plataforma));
+
+    // 2. Servicios ya existentes
+    services.forEach((srv) => addPlat(srv.plataforma));
+
+    // 3. Plataformas estándar
+    [
+      'Netflix',
+      'Disney+',
+      'Amazon Prime',
+      'MAX',
+      'Spotify',
+      'DIRECTV',
+      'Apple Music',
+      'Canva Pro',
+      'Paramount',
+      'YouTube Premium',
+      'Crunchyroll',
+    ].forEach((p) => addPlat(p));
+
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }, [accounts, services]);
+
   // Cuentas pertenecientes a la plataforma seleccionada en el formulario
-  const matchingAccounts = accounts.filter((acc) =>
-    isSamePlatform(acc.plataforma, serviceForm.plataforma)
-  );
+  const matchingAccounts = useMemo(() => {
+    return accounts.filter((acc) => isSamePlatform(acc.plataforma, serviceForm.plataforma));
+  }, [accounts, serviceForm.plataforma]);
+
+  const handlePlatformChange = (newPlat: string) => {
+    if (newPlat === '__NEW_PLATFORM__') {
+      setIsCustomPlatform(true);
+      setServiceForm((prev) => ({
+        ...prev,
+        plataforma: '',
+        cuenta_id: '',
+        correo_cuenta: '',
+      }));
+      return;
+    }
+
+    setIsCustomPlatform(false);
+    const matched = accounts.filter((acc) => isSamePlatform(acc.plataforma, newPlat));
+    // Si hay exactamente una sola cuenta de esta plataforma, ¡auto-seleccionarla!
+    if (matched.length === 1) {
+      setServiceForm((prev) => ({
+        ...prev,
+        plataforma: newPlat,
+        cuenta_id: matched[0].id,
+        correo_cuenta: matched[0].correo_cuenta,
+      }));
+    } else {
+      setServiceForm((prev) => ({
+        ...prev,
+        plataforma: newPlat,
+        cuenta_id: '',
+        correo_cuenta: '',
+      }));
+    }
+  };
 
   const getAccOccupied = (acc: Account) => {
     return services.filter(
@@ -89,6 +175,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
   };
 
   const handleOpenServiceModal = (clientId: string, srv?: Service) => {
+    setIsCustomPlatform(false);
     if (srv) {
       setServiceForm({
         id: srv.id,
@@ -103,16 +190,20 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
         notas: srv.notas || '',
       });
     } else {
+      const defaultPlat = availablePlatforms[0] || 'Netflix';
+      const matched = accounts.filter((acc) => isSamePlatform(acc.plataforma, defaultPlat));
+      const firstAcc = matched.length === 1 ? matched[0] : null;
+
       setServiceForm({
         id: '',
         cliente_id: clientId,
-        plataforma: 'Netflix',
+        plataforma: defaultPlat,
         perfil: '',
         pin: '',
         valor: '20000',
-        fecha_proximo_pago: '2026-09-03',
-        cuenta_id: '',
-        correo_cuenta: '',
+        fecha_proximo_pago: new Date().toISOString().split('T')[0],
+        cuenta_id: firstAcc ? firstAcc.id : '',
+        correo_cuenta: firstAcc ? firstAcc.correo_cuenta : '',
         notas: '',
       });
     }
@@ -350,22 +441,57 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
             <form onSubmit={handleSaveService} className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">Plataforma</label>
-                  <select
-                    value={serviceForm.plataforma}
-                    onChange={(e) => setServiceForm({ ...serviceForm, plataforma: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="Netflix">Netflix</option>
-                    <option value="Disney+">Disney+</option>
-                    <option value="Amazon Prime">Amazon Prime</option>
-                    <option value="MAX">MAX</option>
-                    <option value="Spotify">Spotify</option>
-                    <option value="DIRECTV">DIRECTV</option>
-                    <option value="Apple Music">Apple Music</option>
-                    <option value="Canva Pro">Canva Pro</option>
-                    <option value="Otro">Otro</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs text-slate-300">Plataforma</label>
+                    {isCustomPlatform && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomPlatform(false);
+                          handlePlatformChange(availablePlatforms[0] || 'Netflix');
+                        }}
+                        className="text-[10px] text-emerald-400 hover:underline"
+                      >
+                        ← Volver a lista
+                      </button>
+                    )}
+                  </div>
+                  {isCustomPlatform ? (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Paramount, Max..."
+                      value={serviceForm.plataforma}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const matched = accounts.filter((acc) => isSamePlatform(acc.plataforma, val));
+                        setServiceForm((prev) => ({
+                          ...prev,
+                          plataforma: val,
+                          cuenta_id: matched.length === 1 ? matched[0].id : '',
+                          correo_cuenta: matched.length === 1 ? matched[0].correo_cuenta : prev.correo_cuenta,
+                        }));
+                      }}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500 font-medium"
+                    />
+                  ) : (
+                    <select
+                      value={serviceForm.plataforma}
+                      onChange={(e) => handlePlatformChange(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500 font-medium"
+                    >
+                      {serviceForm.plataforma &&
+                        !availablePlatforms.some((p) => p.toLowerCase() === serviceForm.plataforma.toLowerCase()) && (
+                          <option value={serviceForm.plataforma}>{serviceForm.plataforma}</option>
+                        )}
+                      {availablePlatforms.map((plat) => (
+                        <option key={plat} value={plat}>
+                          {plat}
+                        </option>
+                      ))}
+                      <option value="__NEW_PLATFORM__">➕ Otra plataforma...</option>
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Valor ($ COP)</label>

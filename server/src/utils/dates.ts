@@ -60,13 +60,28 @@ export function isSamePlatform(platA: string, platB: string): boolean {
   const b = (platB || '').toLowerCase().trim();
   if (!a || !b) return false;
   if (a === b) return true;
+
+  // Comparación limpia eliminando caracteres no alfanuméricos (ej: "disney+" y "disney", "paramount+" y "paramount")
+  const cleanA = a.replace(/[^a-z0-9]/g, '');
+  const cleanB = b.replace(/[^a-z0-9]/g, '');
+  if (cleanA && cleanB && cleanA === cleanB) return true;
+
   if (a.includes('netflix') && b.includes('netflix')) return true;
   if (a.includes('disney') && b.includes('disney')) return true;
-  if (a.includes('prime') && b.includes('prime')) return true;
-  if (a.includes('max') && b.includes('max')) return true;
+  if ((a.includes('prime') || a.includes('amazon')) && (b.includes('prime') || b.includes('amazon'))) return true;
+  if ((a.includes('max') || a.includes('hbo')) && (b.includes('max') || b.includes('hbo'))) return true;
   if (a.includes('spotify') && b.includes('spotify')) return true;
   if (a.includes('apple') && b.includes('apple')) return true;
   if (a.includes('canva') && b.includes('canva')) return true;
-  if (a.includes('directv') && b.includes('directv')) return true;
+  if ((a.includes('directv') || a.includes('dgo')) && (b.includes('directv') || b.includes('dgo'))) return true;
+  if (a.includes('paramount') && b.includes('paramount')) return true;
+  if (a.includes('youtube') && b.includes('youtube')) return true;
+  if (a.includes('crunchyroll') && b.includes('crunchyroll')) return true;
+
+  // Comparación por contención de subcadenas si tienen longitud razonable
+  if (cleanA.length >= 4 && cleanB.length >= 4) {
+    if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+  }
+
   return false;
 }

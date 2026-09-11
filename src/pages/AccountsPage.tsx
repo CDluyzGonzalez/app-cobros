@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Layers, Plus, Mail, Edit2, Trash2, Search, Users, ShieldAlert } from 'lucide-react';
 import { Account, Service } from '../types';
 import { api } from '../services/api';
@@ -26,19 +26,44 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ accounts, services =
     notas: '',
   });
 
+  const platformSuggestions = useMemo(() => {
+    const list = ['Netflix', 'Disney+', 'Amazon Prime', 'MAX', 'Spotify', 'DIRECTV', 'Apple Music', 'Canva Pro', 'Paramount', 'YouTube Premium', 'Crunchyroll'];
+    accounts.forEach((a) => {
+      if (a.plataforma && !list.some((item) => item.toLowerCase() === a.plataforma.toLowerCase())) {
+        list.push(a.plataforma);
+      }
+    });
+    return list;
+  }, [accounts]);
+
   const isSamePlatform = (platA: string, platB: string): boolean => {
     const a = (platA || '').toLowerCase().trim();
     const b = (platB || '').toLowerCase().trim();
     if (!a || !b) return false;
     if (a === b) return true;
+
+    // Comparación limpia eliminando caracteres no alfanuméricos (ej: "disney+" y "disney", "paramount+" y "paramount")
+    const cleanA = a.replace(/[^a-z0-9]/g, '');
+    const cleanB = b.replace(/[^a-z0-9]/g, '');
+    if (cleanA && cleanB && cleanA === cleanB) return true;
+
     if (a.includes('netflix') && b.includes('netflix')) return true;
     if (a.includes('disney') && b.includes('disney')) return true;
-    if (a.includes('prime') && b.includes('prime')) return true;
-    if (a.includes('max') && b.includes('max')) return true;
+    if ((a.includes('prime') || a.includes('amazon')) && (b.includes('prime') || b.includes('amazon'))) return true;
+    if ((a.includes('max') || a.includes('hbo')) && (b.includes('max') || b.includes('hbo'))) return true;
     if (a.includes('spotify') && b.includes('spotify')) return true;
     if (a.includes('apple') && b.includes('apple')) return true;
     if (a.includes('canva') && b.includes('canva')) return true;
-    if (a.includes('directv') && b.includes('directv')) return true;
+    if ((a.includes('directv') || a.includes('dgo')) && (b.includes('directv') || b.includes('dgo'))) return true;
+    if (a.includes('paramount') && b.includes('paramount')) return true;
+    if (a.includes('youtube') && b.includes('youtube')) return true;
+    if (a.includes('crunchyroll') && b.includes('crunchyroll')) return true;
+
+    // Comparación por contención de subcadenas si tienen longitud razonable
+    if (cleanA.length >= 4 && cleanB.length >= 4) {
+      if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+    }
+
     return false;
   };
 
@@ -328,10 +353,17 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ accounts, services =
                   <input
                     type="text"
                     required
+                    list="account-platform-suggestions"
+                    placeholder="Ej: Paramount, Netflix..."
                     value={form.plataforma}
                     onChange={(e) => setForm({ ...form, plataforma: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
                   />
+                  <datalist id="account-platform-suggestions">
+                    {platformSuggestions.map((p) => (
+                      <option key={p} value={p} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs text-slate-300 mb-1">Costo Mensual ($ COP)</label>
