@@ -1,9 +1,10 @@
-import React from 'react';
-import { MessageCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { MessageCircle, Check } from 'lucide-react';
 import {
   createWhatsAppUrl,
   generateCollectionMessage,
   generateReminderMessage,
+  isWhatsAppUsername,
   ServiceItemSummary,
 } from '../../utils/whatsapp';
 import { Service } from '../../types';
@@ -35,12 +36,15 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
   allServices,
   clientServices,
 }) => {
+  const [copied, setCopied] = useState(false);
+
   // Determinar los servicios activos a considerar para este cliente
   let resolvedServices: ServiceItemSummary[] | undefined = clientServices;
 
   if (!resolvedServices && allServices && allServices.length > 0) {
     const cleanPhone = (telefono || '').replace(/\D/g, '');
     const cleanName = (nombre || '').trim().toLowerCase();
+    const cleanContact = (telefono || '').trim().toLowerCase();
 
     const matched = allServices.filter((s) => {
       if (s.estado === 'CANCELADO') return false;
@@ -48,6 +52,9 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
       if (cleanPhone && s.cliente_telefono) {
         const sPhone = s.cliente_telefono.replace(/\D/g, '');
         if (sPhone && sPhone === cleanPhone) return true;
+      }
+      if (cleanContact && s.cliente_telefono) {
+        if (s.cliente_telefono.trim().toLowerCase() === cleanContact) return true;
       }
       if (cleanName && s.cliente_nombre) {
         return s.cliente_nombre.trim().toLowerCase() === cleanName;
@@ -62,6 +69,20 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const cleanContact = (telefono || '').trim();
+    const isUser = isWhatsAppUsername(cleanContact);
+
+    // Si es un username (@usuario), copiarlo al portapapeles para facilitar la búsqueda en WhatsApp
+    if (isUser) {
+      try {
+        navigator.clipboard.writeText(cleanContact);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      } catch {
+        // Fallback silencioso si el navegador bloquea clipboard
+      }
+    }
 
     const msg =
       type === 'reminder'
@@ -91,6 +112,7 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
   };
 
   const servicesCount = resolvedServices ? resolvedServices.length : 1;
+  const isUser = isWhatsAppUsername((telefono || '').trim());
 
   return (
     <button
@@ -99,13 +121,24 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
       style={{ backgroundColor: '#4ec481' }}
       className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-2.5 text-slate-950 font-bold rounded-xl shadow-md transition-all text-xs hover:brightness-105 active:scale-95 cursor-pointer ${className}`}
       title={
-        servicesCount > 1
+        isUser
+          ? `Abrir WhatsApp y copiar ${telefono} al portapapeles`
+          : servicesCount > 1
           ? `Enviar WhatsApp a ${nombre} (${servicesCount} servicios activos)`
           : `Enviar WhatsApp a ${nombre}`
       }
     >
-      <MessageCircle className="w-3.5 h-3.5 fill-slate-950/20" />
-      <span>WhatsApp</span>
+      {copied ? (
+        <>
+          <Check className="w-3.5 h-3.5 text-slate-950" />
+          <span className="truncate max-w-[120px]">¡{telefono} copiado!</span>
+        </>
+      ) : (
+        <>
+          <MessageCircle className="w-3.5 h-3.5 fill-slate-950/20" />
+          <span>WhatsApp</span>
+        </>
+      )}
     </button>
   );
 };

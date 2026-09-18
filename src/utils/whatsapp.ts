@@ -159,7 +159,7 @@ export function generateReminderMessage({
 }
 
 /**
- * Dececta si el contacto es un nombre de usuario de WhatsApp válido (ej: "573001234567")
+ * Detecta si el contacto es un nombre de usuario de WhatsApp (@usuario)
  */
 export function isWhatsAppUsername(contacto: string): boolean {
   const clean = (contacto || '').trim();
@@ -173,13 +173,14 @@ export function createWhatsAppUrl(telefono: string, mensaje: string): string {
   const clean = (telefono || '').trim();
   const encodedMsg = encodeURIComponent(mensaje);
 
-  // si es nombre de usuario de WhatsApp
+  // 1. Si es nombre de usuario de WhatsApp (@Gigikpj, @Mayreth_th, @tati0915, etc.)
+  // wa.me/usuario arroja error de número inválido en WhatsApp,
+  // por lo que usamos el selector nativo con el texto pre-cargado:
   if (isWhatsAppUsername(clean)) {
-    const username = clean.substring(1).trim();
-    return `https://wa.me/${username}?text=${encodedMsg}`;
+    return `https://api.whatsapp.com/send?text=${encodedMsg}`;
   }
 
-  // si es número de teléfono
+  // 2. Si es número telefónico tradicional
   const cleanPhone = clean.replace(/\D/g, '');
   if (cleanPhone) {
     // Si tiene 10 dígitos e inicia con 3 (móvil colombiano), anteponer 57
