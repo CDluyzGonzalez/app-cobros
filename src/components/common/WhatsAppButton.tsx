@@ -23,6 +23,37 @@ interface WhatsAppButtonProps {
   clientServices?: ServiceItemSummary[];
 }
 
+function copyTextToClipboard(text: string): boolean {
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '-9999px';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    if (successful) return true;
+  } catch {
+    // fallback a navigator.clipboard
+  }
+
+  try {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fallback
+  }
+
+  return false;
+}
+
 export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
   nombre,
   plataforma,
@@ -73,15 +104,11 @@ export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
     const cleanContact = (telefono || '').trim();
     const isUser = isWhatsAppUsername(cleanContact);
 
-    // Si es un username (@usuario), copiarlo al portapapeles para facilitar la búsqueda en WhatsApp
+    // Si es un username (@usuario), copiarlo al portapapeles de forma sincrónica garantizada
     if (isUser) {
-      try {
-        navigator.clipboard.writeText(cleanContact);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-      } catch {
-        // Fallback silencioso si el navegador bloquea clipboard
-      }
+      copyTextToClipboard(cleanContact);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3500);
     }
 
     const msg =
