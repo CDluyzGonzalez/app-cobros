@@ -159,16 +159,32 @@ export function generateReminderMessage({
 }
 
 /**
+ * Dececta si el contacto es un nombre de usuario de WhatsApp válido (ej: "573001234567")
+ */
+export function isWhatsAppUsername(contacto: string): boolean {
+  const clean = (contacto || '').trim();
+  return clean.startsWith('@') && clean.length > 1;
+}
+
+/**
  * Genera la URL para abrir WhatsApp Web o App móvil
  */
 export function createWhatsAppUrl(telefono: string, mensaje: string): string {
-  const cleanPhone = (telefono || '').replace(/\D/g, '');
+  const clean = (telefono || '').trim();
   const encodedMsg = encodeURIComponent(mensaje);
 
+  // si es nombre de usuario de WhatsApp
+  if (isWhatsAppUsername(clean)) {
+    const username = clean.substring(1).trim();
+    return `https://wa.me/${username}?text=${encodedMsg}`;
+  }
+
+  // si es número de teléfono
+  const cleanPhone = clean.replace(/\D/g, '');
   if (cleanPhone) {
     // Si tiene 10 dígitos e inicia con 3 (móvil colombiano), anteponer 57
-    const finalPhone = cleanPhone.length === 10 && cleanPhone.startsWith('3')
-      ? `57${cleanPhone}`
+    const finalPhone = cleanPhone.length === 10 && cleanPhone.startsWith('3') 
+      ? `57${cleanPhone}` 
       : cleanPhone;
 
     return `https://wa.me/${finalPhone}?text=${encodedMsg}`;

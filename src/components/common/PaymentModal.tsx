@@ -211,6 +211,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               <option value="Transferencia (Bancolombia / Nequi)">Transferencia (Bancolombia / Nequi)</option>
               <option value="Daviplata">Daviplata</option>
               <option value="Efectivo">Efectivo</option>
+              <option value="Nu">Nu</option>
               <option value="Otro">Otro</option>
             </select>
           </div>
