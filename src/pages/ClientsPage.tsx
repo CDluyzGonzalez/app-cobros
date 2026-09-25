@@ -182,7 +182,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
         cliente_id: srv.cliente_id,
         plataforma: srv.plataforma,
         perfil: srv.perfil,
-        pin: srv.pin || '',
+        pin: srv.pin || srv.pin_encrypted || '',
         valor: srv.valor.toString(),
         fecha_proximo_pago: (srv.fecha_proximo_pago || '').split('T')[0] || new Date().toISOString().split('T')[0],
         cuenta_id: srv.cuenta_id || '',
@@ -340,7 +340,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
                         <div>
                           <p className="text-xs font-semibold text-white">{srv.plataforma || 'Netflix'} · Editar</p>
                           <p className="text-[10px] text-slate-400">
-                            {srv.perfil ? `Perfil: ${srv.perfil}` : 'Perfil único'} {srv.pin ? `• PIN: ${srv.pin}` : ''}
+                            {srv.perfil ? `Perfil: ${srv.perfil}` : 'Perfil único'} {(srv.pin || srv.pin_encrypted) ? `• PIN: ${srv.pin || srv.pin_encrypted}` : ''}
                           </p>
                         </div>
                         <div className="text-right">
@@ -517,7 +517,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">PIN del Perfil (Cifrado)</label>
+                  <label className="block text-xs text-slate-300 mb-1">PIN del Perfil (Opcional)</label>
                   <input
                     type="text"
                     placeholder="Ej: 1234"

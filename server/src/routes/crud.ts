@@ -135,6 +135,7 @@ crudRouter.post('/services', async (req: Request, res: Response) => {
       correo_cuenta,
       plataforma,
       perfil,
+      pin,
       pin_encrypted,
       valor,
       fecha_proximo_pago,
@@ -145,6 +146,7 @@ crudRouter.post('/services', async (req: Request, res: Response) => {
     const chosenDateStr = (fecha_proximo_pago || formatDateIso(new Date())).split('T')[0];
     const diaAncla = Number(chosenDateStr.split('-')[2]) || 1;
     const now = new Date().toISOString();
+    const finalPin = (pin || pin_encrypted || '').toString().trim();
 
     let targetCuentaId = cuenta_id || '';
 
@@ -186,7 +188,8 @@ crudRouter.post('/services', async (req: Request, res: Response) => {
       correo_cuenta: correo_cuenta || '',
       plataforma: plataforma || 'Netflix',
       perfil: perfil || '',
-      pin_encrypted: pin_encrypted || '',
+      pin: finalPin,
+      pin_encrypted: finalPin,
       valor: Number(valor) || 0,
       dia_ancla: diaAncla,
       fecha_inicio: chosenDateStr,
@@ -221,6 +224,12 @@ crudRouter.put('/services/:id', async (req: Request, res: Response) => {
       const cleanDate = req.body.fecha_proximo_pago.split('T')[0];
       updateData.fecha_proximo_pago = cleanDate;
       updateData.dia_ancla = Number(cleanDate.split('-')[2]) || 1;
+    }
+
+    if (req.body.pin !== undefined || req.body.pin_encrypted !== undefined) {
+      const finalPin = (req.body.pin !== undefined ? req.body.pin : req.body.pin_encrypted || '').toString().trim();
+      updateData.pin = finalPin;
+      updateData.pin_encrypted = finalPin;
     }
 
     // Vincular cuenta matriz respetando la plataforma

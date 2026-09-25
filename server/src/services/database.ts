@@ -96,6 +96,7 @@ export class DatabaseService {
 
       return {
         ...data,
+        pin: data.pin || data.pin_encrypted || '',
         id: doc.id,
         cliente_nombre: client ? client.nombre : 'Cliente Desconocido',
         cliente_telefono: client ? client.telefono : '',

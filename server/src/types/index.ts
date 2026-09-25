@@ -57,8 +57,8 @@ export interface ServiceEntity {
   cuenta_id: string;
   correo_cuenta?: string;
   plataforma: string;
-  perfil: string;
-  pin_encrypted: string;
+  pin?: string;
+  pin_encrypted?: string;
   valor: number;
   dia_ancla: number; // Día del mes fijo (1 a 31)
   fecha_inicio: string; // YYYY-MM-DD
