@@ -242,6 +242,16 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
     c.telefono.includes(searchTerm)
   );
 
+  // Clientes activos: aquellos que tienen al menos 1 servicio con estado !== 'CANCELADO'
+  const activeClientsCount = useMemo(() => {
+    const activeClientIds = new Set(
+      services
+        .filter((s) => s.estado !== 'CANCELADO')
+        .map((s) => s.cliente_id)
+    );
+    return clients.filter((c) => activeClientIds.has(c.id)).length;
+  }, [clients, services]);
+
   const formatCOP = (num: number) =>
     new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -254,10 +264,17 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ clients, services, acc
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-            <Users className="w-5 h-5 text-emerald-400" /> Directorio de Clientes
-          </h2>
-          <p className="text-xs text-slate-400">Administra clientes, teléfonos y sus plataformas contratadas</p>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <Users className="w-5 h-5 text-emerald-400" /> Directorio de Clientes
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {activeClientsCount} activos
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {activeClientsCount} clientes activos con servicios vigentes • {clients.length} registrados en total
+          </p>
         </div>
 
         <button

@@ -154,6 +154,12 @@ export const BillingPage: React.FC<BillingPageProps> = ({ payments, accounts = [
   const nextMonthPayments = sortedPending.filter((p) => (p.fecha_limite || '').slice(0, 7) === nextYearMonth);
   const futurePayments = sortedPending.filter((p) => (p.fecha_limite || '').slice(0, 7) > nextYearMonth);
 
+  // Totales pendientes por pagar (suma de valores de cuentas no pagadas)
+  const overduePendingTotal = overduePayments.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+  const currentMonthPendingTotal = currentMonthPayments.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+  const nextMonthPendingTotal = nextMonthPayments.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+  const futurePendingTotal = futurePayments.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+
   // Renderizar tarjeta de pago pendiente
   const renderPaymentCard = (p: PlatformPayment) => {
     const day = getDayNumber(p.fecha_limite);
@@ -241,10 +247,15 @@ export const BillingPage: React.FC<BillingPageProps> = ({ payments, accounts = [
       {/* ⚠️ BLOQUE 0: PAGOS ATRASADOS / VENCIDOS (Si existen) */}
       {overduePayments.length > 0 && (
         <div className="space-y-3 p-4 bg-rose-950/20 border border-rose-900/50 rounded-3xl">
-          <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Cuentas Atrasadas / Vencidas</span>
-            <span className="text-xs font-normal text-rose-300">({overduePayments.length})</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-900/30 pb-2">
+            <div className="flex items-center gap-2 text-rose-400 font-bold text-sm">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Cuentas Atrasadas / Vencidas</span>
+              <span className="text-xs font-normal text-rose-300">({overduePayments.length} pendientes)</span>
+            </div>
+            <span className="text-xs font-bold text-rose-400 bg-rose-950/80 border border-rose-800/80 px-2.5 py-0.5 rounded-full">
+              Falta: {formatCOP(overduePendingTotal)}
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {overduePayments.map(renderPaymentCard)}
@@ -254,12 +265,19 @@ export const BillingPage: React.FC<BillingPageProps> = ({ payments, accounts = [
 
       {/* 📅 BLOQUE 1: MES ACTUAL (Ordenado del día 1 al 31) */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-          <Calendar className="w-4 h-4 text-emerald-400" />
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-            {getMonthTitle(currentYearMonth)}
-          </h3>
-          <span className="text-xs text-slate-400">({currentMonthPayments.length} pendientes)</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              {getMonthTitle(currentYearMonth)}
+            </h3>
+            <span className="text-xs text-slate-400">({currentMonthPayments.length} pendientes)</span>
+          </div>
+          {currentMonthPayments.length > 0 && (
+            <span className="text-xs font-bold text-rose-400 bg-rose-950/50 border border-rose-900/60 px-2.5 py-0.5 rounded-full">
+              Falta por pagar: {formatCOP(currentMonthPendingTotal)}
+            </span>
+          )}
         </div>
 
         {currentMonthPayments.length > 0 ? (
@@ -275,12 +293,19 @@ export const BillingPage: React.FC<BillingPageProps> = ({ payments, accounts = [
 
       {/* 📅 BLOQUE 2: MES SIGUIENTE (Bimestral, ordenado del día 1 al 31) */}
       <div className="space-y-3 pt-2">
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-          <Calendar className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-            {getMonthTitle(nextYearMonth)}
-          </h3>
-          <span className="text-xs text-slate-400">({nextMonthPayments.length} pendientes)</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 text-indigo-400" />
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              {getMonthTitle(nextYearMonth)}
+            </h3>
+            <span className="text-xs text-slate-400">({nextMonthPayments.length} pendientes)</span>
+          </div>
+          {nextMonthPayments.length > 0 && (
+            <span className="text-xs font-bold text-indigo-400 bg-indigo-950/50 border border-indigo-900/60 px-2.5 py-0.5 rounded-full">
+              Por pagar: {formatCOP(nextMonthPendingTotal)}
+            </span>
+          )}
         </div>
 
         {nextMonthPayments.length > 0 ? (
@@ -297,12 +322,17 @@ export const BillingPage: React.FC<BillingPageProps> = ({ payments, accounts = [
       {/* 📅 BLOQUE 3: OTROS MESES FUTUROS (Si aplica) */}
       {futurePayments.length > 0 && (
         <div className="space-y-3 pt-2">
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-              Meses Posteriores
-            </h3>
-            <span className="text-xs text-slate-400">({futurePayments.length} pendientes)</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Meses Posteriores
+              </h3>
+              <span className="text-xs text-slate-400">({futurePayments.length} pendientes)</span>
+            </div>
+            <span className="text-xs font-bold text-slate-300 bg-slate-800/80 border border-slate-700/80 px-2.5 py-0.5 rounded-full">
+              Por pagar: {formatCOP(futurePendingTotal)}
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {futurePayments.map(renderPaymentCard)}
