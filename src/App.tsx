@@ -18,6 +18,7 @@ import { ShieldCheck, RefreshCw, LogOut } from 'lucide-react';
 import { InstallPwaBanner } from './components/common/InstallPwaBanner';
 import { InstallModal } from './components/common/InstallModal';
 import { Download } from 'lucide-react';
+import { syncPushSubscriptionSilently } from './services/pushSync';
 
 function MainApp() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -249,8 +250,11 @@ function MainApp() {
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
+      if (user?.id && user?.email !== 'demo@appcobros.com') {
+        syncPushSubscriptionSilently(user.id);
+      }
     }
-  }, [isAuthenticated, loadData]);
+  }, [isAuthenticated, loadData, user]);
       // Función para instalar directamente o abrir modal si es iPhone
   const handleTriggerInstall = async () => {
     const promptEvent = (window as any).deferredPrompt;

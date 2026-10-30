@@ -55,6 +55,7 @@ notificationsRouter.post('/subscribe', async (req: Request, res: Response) => {
       endpoint: subscription.endpoint,
       keys: subscription.keys,
       userId: userId || null,
+      userAgent: req.headers['user-agent'] || 'Desconocido',
       updated_at: new Date().toISOString(),
     }, { merge: true });
 
